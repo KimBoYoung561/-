@@ -1,0 +1,48 @@
+import { CommunityReport } from '../types';
+
+export const INITIAL_COMMUNITY_REPORTS: CommunityReport[] = [
+  {
+    id: 'rep-1',
+    category: 'closure',
+    categoryName: '길 통제/공사',
+    title: '안양천 충훈교 하부 수변길 준설 공사로 임시 우회로 운영',
+    location: '안양천 충훈교 하부 북단 300m 구간',
+    content: '하천 정비 공사로 인해 8월 25일까지 제방 위 우회 자전거도로를 이용하셔야 합니다. 현장 안내요원 지시에 따라 서행해 주세요.',
+    timestamp: '25분 전',
+    status: 'active',
+    likes: 18,
+  },
+  {
+    id: 'rep-2',
+    category: 'accident',
+    categoryName: '사고/낙차 주의',
+    title: '학의천 수촌교 합수부 급커브 보행자 밀집 구간 낙차 주의',
+    location: '학의천 수촌교 남단 데크로드 앞',
+    content: '곡선 반경이 좁고 산책하는 보행자가 많아 접촉 사고 위험이 높습니다. 15km/h 이하로 서행하세요.',
+    timestamp: '1시간 전',
+    status: 'active',
+    likes: 34,
+  },
+  {
+    id: 'rep-3',
+    category: 'damage',
+    categoryName: '도로 파손/요철',
+    title: '삼성천 안양예술공원 입구 노면 블록 단차 보수 완료',
+    location: '삼성천 만안교 사거리 횡단로',
+    content: '기존에 돌출되었던 맨홀 턱과 아스팔트 단차가 평탄화 작업 완료되어 안전하게 통행 가능합니다.',
+    timestamp: '3시간 전',
+    status: 'resolved',
+    likes: 42,
+  },
+  {
+    id: 'rep-4',
+    category: 'hazard',
+    categoryName: '장애물/토사',
+    title: '삼막천 석수체육공원 앞 빗물 토사 퇴적으로 슬립 위험',
+    location: '삼막천 하류부 석수IC 하부 자전거길',
+    content: '우천 후 모래와 잔자갈이 노면에 깔려 있어 급제동 시 미끄러질 수 있으니 주의 바랍니다.',
+    timestamp: '4시간 전',
+    status: 'active',
+    likes: 12,
+  },
+];

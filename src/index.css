@@ -1,0 +1,47 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+@theme {
+  --color-brand-blue: #0055FF;
+  --color-brand-green: #10B981;
+  --color-brand-neon: #059669;
+  --color-brand-pink: #E11D48;
+  --color-brand-dark: #0F172A;
+  --color-brand-card: #FFFFFF;
+}
+
+@layer utilities {
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .bg-grid-dots {
+    background-image: radial-gradient(#CBD5E1 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .glow-blue {
+    filter: drop-shadow(0 0 10px rgba(0, 85, 255, 0.35));
+  }
+  .glow-green {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.25);
+  }
+  .glow-pink {
+    filter: drop-shadow(0 0 10px rgba(225, 29, 72, 0.35));
+  }
+}
+
+/* Leaflet Light Tile Styling */
+.leaflet-container {
+  font-family: inherit;
+  width: 100%;
+  height: 100%;
+  background: #F8FAFC !important;
+}
+
+.custom-bike-marker {
+  background: transparent;
+  border: none;
+}

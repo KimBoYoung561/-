@@ -1,0 +1,6 @@
+{
+  "name": "안양 자전거 지도",
+  "description": "안양시 자전거 전용 도로 및 내비게이션, 맞춤형 라이딩 경로와 실시간 안내 앱",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
