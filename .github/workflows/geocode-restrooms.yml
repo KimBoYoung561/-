@@ -1,0 +1,52 @@
+name: 화장실 좌표 채우기
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_file:
+        description: '좌표를 채울 파일 경로 (예: data/facilities.ts)'
+        required: true
+        default: 'data/restrooms.ts'
+      mode:
+        description: '검색 방식: address(정식 주소 있음) 또는 keyword(장소 이름만 있음)'
+        required: true
+        default: 'address'
+        type: choice
+        options:
+          - address
+          - keyword
+
+jobs:
+  geocode:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 좌표 채우기 스크립트 실행
+        env:
+          KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
+          TARGET_FILE: ${{ inputs.target_file }}
+          GEOCODE_MODE: ${{ inputs.mode }}
+        run: node script/geocode-restrooms.mjs
+
+      - name: 변경사항 커밋 & 푸시
+        env:
+          TARGET_FILE: ${{ inputs.target_file }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "변경된 내용이 없습니다."
+          else
+            git add "$TARGET_FILE"
+            git commit -m "facility 데이터에 좌표(lat/lng) 자동 채움"
+            git push
+          fi
