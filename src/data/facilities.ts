@@ -1,6 +1,5 @@
 import { Facility } from '../types';
 import { IMPORTED_FACILITIES } from './importedFacilities';
-import { OFFICIAL_OPEN_RESTROOMS } from './officialOpenRestrooms';
 
 const CURATED_FACILITIES: Facility[] = [
   // 🚻 ─── 안양시 공중화장실 & 개방화장실 (Anyang Restroom Dataset) ───
@@ -12,8 +11,6 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '공중화장실',
     address: '경기도 안양시 만안구 안양동 1776',
     roadAddress: '경기도 안양시 만안구 안양동 1776',
-    lat: 37.3982,
-    lng: 126.9185,
     description: '안양3동 쌈지공원 내 상시 개방 공중화장실. 수변 산책로와 인접',
     availableItems: ['24시간 개방', '남녀 분리', '안심 비상벨', '자전거 거치대'],
     distance: '350m',
@@ -23,6 +20,8 @@ const CURATED_FACILITIES: Facility[] = [
     emergencyBell: true,
     disabledToilet: false,
     cctv: false,
+    lat: 37.3982,
+    lng: 126.9185,
   },
   {
     id: 'fac-rest-2',
@@ -32,8 +31,6 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '공중화장실',
     address: '경기도 안양시 만안구 석수동 295-1',
     roadAddress: '경기도 안양시 만안구 안양로 475번길 51',
-    lat: 37.4112,
-    lng: 126.9198,
     description: '어린이공원 내 현대식 안심 공중화장실. 장애인 전용 및 기저귀교환대 완비',
     availableItems: ['24시간 개방', '남녀 분리', '장애인 화장실', '비상벨', '기저귀교환대'],
     distance: '1.8km',
@@ -43,6 +40,8 @@ const CURATED_FACILITIES: Facility[] = [
     emergencyBell: true,
     disabledToilet: true,
     diaperTable: true,
+    lat: 37.4112,
+    lng: 126.9198,
   },
   {
     id: 'fac-rest-3',
@@ -52,8 +51,6 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '개방화장실',
     address: '경기도 안양시 동안구 관양동 1407-1',
     roadAddress: '경기도 안양시 동안구 관악대로223번길 30',
-    lat: 37.4005,
-    lng: 126.9632,
     description: '관양동 행정복지센터 1층 주민 개방화장실. 쾌적한 냉난방 및 정수기 비치',
     availableItems: ['주민 개방', '남녀 분리', '장애인 램프', '음수 정수기', '냉난방'],
     distance: '820m',
@@ -62,6 +59,8 @@ const CURATED_FACILITIES: Facility[] = [
     managementAgency: '관양동 행정복지센터',
     disabledToilet: true,
     emergencyBell: true,
+    lat: 37.4013587734492,
+    lng: 126.947932179655,
   },
   {
     id: 'fac-rest-4',
@@ -71,8 +70,6 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '공중화장실',
     address: '경기도 안양시 만안구 안양동 873-39',
     roadAddress: '경기도 안양시 만안구 안양로 343번길 57-7',
-    lat: 37.4045,
-    lng: 126.9242,
     description: '안양천 인근 공원 공중화장실. 안심 비상벨 및 유아용 대변기 설치',
     availableItems: ['24시간 상시', '남녀 분리', '장애인용 시설', '비상벨', '유아 대변기'],
     distance: '1.2km',
@@ -81,6 +78,8 @@ const CURATED_FACILITIES: Facility[] = [
     managementAgency: '안양시 공원관리과',
     emergencyBell: true,
     disabledToilet: true,
+    lat: 37.4015111148492,
+    lng: 126.915327917353,
   },
   {
     id: 'fac-rest-5',
@@ -90,8 +89,6 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '공중화장실',
     address: '경기도 안양시 동안구 관양동 1587-1',
     roadAddress: '경기도 안양시 동안구 관평로 305번길 18',
-    lat: 37.3992,
-    lng: 126.9678,
     description: '학의천 자전거도로와 인접한 쾌적한 쉼터 화장실. 자전거 임시 거치대 구비',
     availableItems: ['24시간 개방', '남녀 분리', '비상벨', '자전거 거치대', '가로등'],
     distance: '950m',
@@ -99,6 +96,8 @@ const CURATED_FACILITIES: Facility[] = [
     phone: '031-8045-5021',
     managementAgency: '동안구청 공원관리팀',
     emergencyBell: true,
+    lat: 37.3992,
+    lng: 126.9678,
   },
   {
     id: 'fac-rest-6',
@@ -108,14 +107,14 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '공중화장실',
     address: '경기도 안양시 만안구 석수동 산 139',
     roadAddress: '경기도 안양시 만안구 삼막로 139',
-    lat: 37.4325,
-    lng: 126.9420,
     description: '삼성천/삼막사 힐링 라이딩 코스 종점 숲속 자연학습장 쉼터 화장실',
     availableItems: ['상시 개방', '남녀 분리', '자연친화 시설', '음수대 인접', '피톤치드 쉼터'],
     distance: '4.2km',
     openHours: '00:00 ~ 24:00',
     phone: '031-8045-4512',
     managementAgency: '안양시 만안구청',
+    lat: 37.4325,
+    lng: 126.9420,
   },
   {
     id: 'fac-rest-7',
@@ -125,14 +124,14 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '공중화장실',
     address: '경기도 안양시 만안구 석수동 산11',
     roadAddress: '경기도 안양시 만안구 삼막로 45',
-    lat: 37.4265,
-    lng: 126.9380,
     description: '삼막천 수변공원 라이더 전용 쉼터 옆에 위치한 쾌적 화장실',
     availableItems: ['24시간 개방', '남녀 분리', '공기주입기 인접', '나무 그늘 벤치'],
     distance: '3.6km',
     openHours: '00:00 ~ 24:00',
     phone: '031-8045-3511',
     managementAgency: '안양시 만안구 환경위생과',
+    lat: 37.423571275342,
+    lng: 126.912436466892,
   },
   {
     id: 'fac-rest-8',
@@ -142,8 +141,6 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '공중화장실',
     address: '경기도 안양시 동안구 비산동 1102-6',
     roadAddress: '경기도 안양시 동안구 관악대로 411',
-    lat: 37.4128,
-    lng: 126.9550,
     description: '비산동 롤러코스 및 관악산 숲길 진입로 공중화장실. 음수대 및 비상벨 완비',
     availableItems: ['24시간 개방', '남녀 분리', '비상벨', 'CCTV 감시', '음수대'],
     distance: '2.1km',
@@ -152,6 +149,8 @@ const CURATED_FACILITIES: Facility[] = [
     managementAgency: '안양시 공원녹지과',
     emergencyBell: true,
     cctv: true,
+    lat: 37.4051083692271,
+    lng: 126.968603148703,
   },
   {
     id: 'fac-rest-9',
@@ -161,8 +160,6 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '개방화장실',
     address: '경기도 안양시 만안구 석수동 268-1',
     roadAddress: '경기도 안양시 만안구 경수대로1273번길 46',
-    lat: 37.4190,
-    lng: 126.9085,
     description: '1호선 관악역사 1층 개방화장실. 자전거 휴대 승차 및 환승 라이더 다수 이용',
     availableItems: ['상시 개방', '남녀 분리', '장애인 엘리베이터', '역사 편의점', '자전거 주차장'],
     distance: '3.1km',
@@ -170,6 +167,8 @@ const CURATED_FACILITIES: Facility[] = [
     phone: '031-471-7788',
     managementAgency: '한국철도공사 관악역',
     disabledToilet: true,
+    lat: 37.4188017578979,
+    lng: 126.909121118476,
   },
   {
     id: 'fac-rest-10',
@@ -179,8 +178,6 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '공중화장실',
     address: '경기도 안양시 동안구 관양동 1407-1',
     roadAddress: '경기도 안양시 동안구 관평로 358번길 46',
-    lat: 37.4022,
-    lng: 126.9680,
     description: '학의천 북단 행정복지센터 복합화장실. 안심벨 및 CCTV 24시간 안전 감시',
     availableItems: ['09:00 ~ 18:00', '남녀 분리', '장애인 전용', '비상벨', '기저귀교환대'],
     distance: '1.1km',
@@ -190,6 +187,8 @@ const CURATED_FACILITIES: Facility[] = [
     emergencyBell: true,
     disabledToilet: true,
     cctv: true,
+    lat: 37.4061513517147,
+    lng: 126.961464261189,
   },
   {
     id: 'fac-rest-11',
@@ -199,8 +198,6 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '공중화장실',
     address: '경기도 안양시 만안구 석수동 583-4',
     roadAddress: '경기도 안양시 만안구 석수로 320',
-    lat: 37.4140,
-    lng: 126.9245,
     description: '안양천변 자전거도로 핵심 쉼터 화장실. 자동 공기주입기, 음수대, 자전거 거치대 일체형',
     availableItems: ['24시간 상시', '남녀 분리', '자동 공기주입기', '정수 음수대', '라이더 쉼터'],
     distance: '2.5km',
@@ -209,6 +206,8 @@ const CURATED_FACILITIES: Facility[] = [
     managementAgency: '안양시 생태하천과',
     emergencyBell: true,
     disabledToilet: true,
+    lat: 37.4171621359301,
+    lng: 126.895958282843,
   },
   {
     id: 'fac-rest-12',
@@ -218,8 +217,6 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '공중화장실',
     address: '경기도 안양시 동안구 관양동 1601',
     roadAddress: '경기도 안양시 동안구 관평로 149',
-    lat: 37.3918,
-    lng: 126.9612,
     description: '평촌중앙공원 중앙 분수광장 앞 대형 공중화장실. 최고 수준의 청결도 및 장애인 편의시설 완비',
     availableItems: ['24시간 상시', '남녀 분리', '장애인 전용', '비상벨', '기저귀교환대', '냉난방'],
     distance: '650m',
@@ -230,6 +227,8 @@ const CURATED_FACILITIES: Facility[] = [
     disabledToilet: true,
     cctv: true,
     diaperTable: true,
+    lat: 37.3901366389543,
+    lng: 126.961328707289,
   },
   {
     id: 'fac-rest-13',
@@ -239,8 +238,6 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '공중화장실',
     address: '경기도 안양시 동안구 관양동 1500',
     roadAddress: '경기도 안양시 동안구 관양동 인덕원교 하부',
-    lat: 37.4015,
-    lng: 126.9785,
     description: '학의천 자전거 고속라인 종점 인덕원교 하부 쉼터 공중화장실. 태양광 가로등 및 안심벨',
     availableItems: ['24시간 개방', '남녀 분리', '비상벨', '태양광 에어펌프 인접', '그늘 벤치'],
     distance: '2.3km',
@@ -248,6 +245,8 @@ const CURATED_FACILITIES: Facility[] = [
     phone: '031-8045-5015',
     managementAgency: '안양시 생태하천과',
     emergencyBell: true,
+    lat: 37.4015,
+    lng: 126.9785,
   },
   {
     id: 'fac-rest-14',
@@ -257,8 +256,6 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '공중화장실',
     address: '경기도 안양시 동안구 비산동 1101-5',
     roadAddress: '경기도 안양시 동안구 달안로 65',
-    lat: 37.3960,
-    lng: 126.9500,
     description: '학운공원 운동트랙 옆 공중화장실. 자전거 거치대 및 야외 음수대 구비',
     availableItems: ['24시간 개방', '남녀 분리', '장애인 화장실', '비상벨', '자전거 거치대'],
     distance: '480m',
@@ -267,6 +264,8 @@ const CURATED_FACILITIES: Facility[] = [
     managementAgency: '안양시 공원관리과',
     emergencyBell: true,
     disabledToilet: true,
+    lat: 37.3960973246851,
+    lng: 126.95017743283,
   },
   {
     id: 'fac-rest-15',
@@ -276,8 +275,6 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '개방화장실',
     address: '경기도 안양시 동안구 비산동 132',
     roadAddress: '경기도 안양시 동안구 평촌대로 389',
-    lat: 37.4042,
-    lng: 126.9525,
     description: '비산체육공원 축구장/풋살장/자전거길 연결 개방화장실. 넓은 주차공간 및 음수대',
     availableItems: ['05:00 ~ 24:00', '남녀 분리', '장애인 화장실', '음수대', '비상벨'],
     distance: '1.2km',
@@ -285,6 +282,8 @@ const CURATED_FACILITIES: Facility[] = [
     phone: '031-389-5294',
     managementAgency: '안양도시공사',
     disabledToilet: true,
+    lat: 37.4062913124045,
+    lng: 126.948736574943,
   },
   {
     id: 'fac-rest-16',
@@ -294,8 +293,6 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '공중화장실',
     address: '경기도 안양시 만안구 안양동 산81-2',
     roadAddress: '경기도 안양시 만안구 예술공원로 215',
-    lat: 37.4182,
-    lng: 126.9388,
     description: '안양예술공원 메인 관광로 중심 쉼터 화장실. 자전거 거치대 및 관광안내소 인접',
     availableItems: ['24시간 상시', '남녀 분리', '장애인 화장실', '비상벨', '기저귀교환대'],
     distance: '2.8km',
@@ -305,6 +302,8 @@ const CURATED_FACILITIES: Facility[] = [
     emergencyBell: true,
     disabledToilet: true,
     diaperTable: true,
+    lat: 37.4182,
+    lng: 126.9388,
   },
   {
     id: 'fac-rest-17',
@@ -314,8 +313,6 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '공중화장실',
     address: '경기도 안양시 만안구 석수동 789',
     roadAddress: '경기도 안양시 만안구 충훈로 71번길 15',
-    lat: 37.4118,
-    lng: 126.9325,
     description: '충훈교 벚꽃 뚝방 자전거 전용도로 쉼터에 위치한 친환경 공중화장실',
     availableItems: ['24시간 상시', '남녀 분리', '장애인 화장실', '비상벨', '자전거 거치대'],
     distance: '2.1km',
@@ -324,6 +321,8 @@ const CURATED_FACILITIES: Facility[] = [
     managementAgency: '안양시 만안구 환경위생과',
     emergencyBell: true,
     disabledToilet: true,
+    lat: 37.4061625683578,
+    lng: 126.900333979885,
   },
   {
     id: 'fac-rest-18',
@@ -333,8 +332,6 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '개방화장실',
     address: '경기도 안양시 동안구 관양동 1590',
     roadAddress: '경기도 안양시 동안구 시민대로 235',
-    lat: 37.3942,
-    lng: 126.9565,
     description: '안양시청 및 동안구청 본관 1층 24시간 개방화장실. 스마트 자전거 주차타워 인접',
     availableItems: ['24시간 개방', '남녀 분리', '장애인 화장실', '비상벨', '기저귀교환대', '스마트 주차대'],
     distance: '100m',
@@ -345,6 +342,8 @@ const CURATED_FACILITIES: Facility[] = [
     disabledToilet: true,
     cctv: true,
     diaperTable: true,
+    lat: 37.3942980869639,
+    lng: 126.956858356687,
   },
   {
     id: 'fac-rest-19',
@@ -354,8 +353,6 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '개방화장실',
     address: '경기도 안양시 만안구 안양동 530',
     roadAddress: '경기도 안양시 만안구 안양로 128',
-    lat: 37.3872,
-    lng: 126.9328,
     description: '만안구청 청사 1층 개방화장실. 장애인용 승강기 및 자전거 안전 거치대 완비',
     availableItems: ['06:00 ~ 22:00', '남녀 분리', '장애인 화장실', '비상벨', '기저귀교환대'],
     distance: '1.7km',
@@ -364,6 +361,8 @@ const CURATED_FACILITIES: Facility[] = [
     managementAgency: '안양시 만안구청',
     emergencyBell: true,
     disabledToilet: true,
+    lat: 37.3866426318216,
+    lng: 126.932406831649,
   },
   {
     id: 'fac-rest-20',
@@ -373,8 +372,6 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '공중화장실',
     address: '경기도 안양시 동안구 비산동 1023',
     roadAddress: '경기도 안양시 동안구 비산로 158',
-    lat: 37.4068,
-    lng: 126.9472,
     description: '종합운동장 메인스퀘어 및 인라인트랙 공중화장실. 대규모 라이딩 모임 집결지',
     availableItems: ['05:00 ~ 24:00', '남녀 분리', '장애인 화장실', '대형 거치대', '비상벨'],
     distance: '1.5km',
@@ -383,6 +380,8 @@ const CURATED_FACILITIES: Facility[] = [
     managementAgency: '안양도시공사',
     emergencyBell: true,
     disabledToilet: true,
+    lat: 37.4068,
+    lng: 126.9472,
   },
   {
     id: 'fac-rest-21',
@@ -392,8 +391,6 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '개방화장실',
     address: '경기도 안양시 동안구 호계동 1039-1',
     roadAddress: '경기도 안양시 동안구 동안로 130',
-    lat: 37.3898,
-    lng: 126.9505,
     description: '4호선 범계역사 개방화장실. 범계 상권 및 평촌 자전거도로 진출입구',
     availableItems: ['상시 개방', '남녀 분리', '장애인 엘리베이터', '환승 주차타워', '공기주입기'],
     distance: '750m',
@@ -401,6 +398,8 @@ const CURATED_FACILITIES: Facility[] = [
     phone: '031-384-7788',
     managementAgency: '한국철도공사 범계역',
     disabledToilet: true,
+    lat: 37.38973437119,
+    lng: 126.950983854413,
   },
   {
     id: 'fac-rest-22',
@@ -410,8 +409,6 @@ const CURATED_FACILITIES: Facility[] = [
     facilityType: '공중화장실',
     address: '경기도 안양시 동안구 비산동 1307',
     roadAddress: '경기도 안양시 동안구 안양천-학의천 만남의광장',
-    lat: 37.3975,
-    lng: 126.9555,
     description: '안양 자전거 라이더들의 성지 쌍개울 광장 공중화장실. 태양광 에어펌프, 무료 음수대 일체형',
     availableItems: ['24시간 상시', '남녀 분리', '자동 에어건', '정수 음수대', '자전거 거치대', '비상벨'],
     distance: '180m',
@@ -420,6 +417,8 @@ const CURATED_FACILITIES: Facility[] = [
     managementAgency: '안양시 생태하천과',
     emergencyBell: true,
     disabledToilet: true,
+    lat: 37.3975,
+    lng: 126.9555,
   },
 
   // 💧 ─── 음수대 (Water Fountains) ───
@@ -1138,9 +1137,23 @@ const CURATED_FACILITIES: Facility[] = [
   },
 ];
 
-// CSV records are authoritative for these categories; avoid counting the older summaries twice.
+const FAILED_RESTROOM_NAMES = new Set([
+  '갈뫼어린이공원 공중화장실',
+  '관악수목원 공중화장실',
+  '박달빗물펌프장공중화장실',
+  '병목안 수리산약수터입구 공중화장실',
+  '애향소공원 공중화장실',
+  '최경환성지 앞 공중화장실',
+  '느루소공원공영',
+]);
+
+const VERIFIED_PUBLIC_RESTROOMS = IMPORTED_FACILITIES.filter((facility) =>
+  facility.category !== 'restroom' ||
+  !FAILED_RESTROOM_NAMES.has(facility.name)
+);
+
+// CSV records are authoritative for these categories; show only 251 verified public restrooms.
 export const ANYANG_FACILITIES: Facility[] = [
   ...CURATED_FACILITIES.filter((facility) => facility.category !== 'restroom' && facility.category !== 'parking'),
-  ...IMPORTED_FACILITIES,
-  ...OFFICIAL_OPEN_RESTROOMS,
+  ...VERIFIED_PUBLIC_RESTROOMS,
 ];

@@ -92,11 +92,12 @@ function toCoordinates(result: any): Coordinates | null {
 
 /** Resolves a facility address or installation place, then returns only valid coordinates. */
 export async function geocodeFacilityLocation(name: string, address: string, preferPlaceSearch = false): Promise<Coordinates | null> {
+  const normalizedAddress = normalizeGeocodingText(address);
+  if (!normalizedAddress) return null;
+
   try {
     const maps = await loadKakaoMapsServices();
     if (!maps?.services) return null;
-    const normalizedAddress = normalizeGeocodingText(address);
-    if (!normalizedAddress) return null;
 
     const placeSearch = async (): Promise<Coordinates | null> => {
       if (!maps.services.Places) return null;
@@ -119,11 +120,30 @@ export async function geocodeFacilityLocation(name: string, address: string, pre
 
     const preferredResult = preferPlaceSearch ? await placeSearch() : await addressSearch();
     if (preferredResult) return preferredResult;
-    return preferPlaceSearch ? addressSearch() : placeSearch();
+    const secondaryResult = await (preferPlaceSearch ? addressSearch() : placeSearch());
+    if (secondaryResult) return secondaryResult;
   } catch (err) {
     console.warn('Kakao facility geocoding error:', err);
-    return null;
   }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=kr&q=${encodeURIComponent(normalizedAddress)}`,
+      { signal: controller.signal, headers: { Accept: 'application/json' } },
+    );
+    clearTimeout(timeoutId);
+    const result = await response.json();
+    const lat = Number(result?.[0]?.lat);
+    const lng = Number(result?.[0]?.lon);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+  } catch {
+    // Preserve the existing coordinate if both geocoders are unavailable.
+  }
+
+  console.warn(`No real coordinate found for facility address: ${normalizedAddress}`);
+  return null;
 }
 
 /**

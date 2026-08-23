@@ -60,6 +60,8 @@ const dongCoords = {
   '호계2동': [37.3910, 126.9430], '호계3동': [37.3860, 126.9360], '갈산동': [37.3990, 126.9690],
 };
 const defaultCoord = [37.3945, 126.9565];
+// These are temporary build-time fallbacks only. Run geocode-restrooms.mjs with
+// KAKAO_REST_API_KEY to replace restroom coordinates with address-level results.
 function coordFor(text, index = 0) {
   const key = Object.keys(dongCoords).find((dong) => text.includes(dong));
   const base = dongCoords[key] ?? defaultCoord;
@@ -68,6 +70,10 @@ function coordFor(text, index = 0) {
 const value = (record, ...keys) => keys.map((key) => record[key]).find((item) => item) ?? '';
 const yes = (item) => item?.toUpperCase() === 'Y';
 const number = (item) => Number(item || 0);
+const failedRestroomNames = new Set([
+  '갈뫼어린이공원 공중화장실', '관악수목원 공중화장실', '박달빗물펌프장공중화장실',
+  '병목안 수리산약수터입구 공중화장실', '애향소공원 공중화장실', '최경환성지 앞 공중화장실', '느루소공원공영',
+]);
 
 const toilets = records(readCsv('공중화장실정보_경기안양시.csv')).map((item, index) => {
   const address = value(item, '소재지지번주소', '소재지도로명주소') || '경기도 안양시';
@@ -92,7 +98,9 @@ const toilets = records(readCsv('공중화장실정보_경기안양시.csv')).ma
     emergencyBell: yes(item['비상벨설치여부']), disabledToilet: number(item['남성용-장애인용대변기수']) + number(item['여성용-장애인용대변기수']) > 0,
     cctv: yes(item['화장실입구CCTV설치유무']), diaperTable: yes(item['기저귀교환대유무']),
   };
-});
+}).filter((facility) =>
+  !failedRestroomNames.has(facility.name)
+);
 
 const crosswalks = records(readCsv('경기도 안양시_공간정보시스템_횡단보도 현황_20240628.csv')).map((item, index) => {
   const coord = coordFor(item['관할지역'] || '', index);

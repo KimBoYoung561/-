@@ -886,7 +886,7 @@ export default function App() {
   // Resolve source addresses to real map coordinates once, then reuse them on later visits.
   useEffect(() => {
     let cancelled = false;
-    const cacheKey = 'anyang-facility-coordinates-v6-restroom-address-first';
+    const cacheKey = 'anyang-facility-coordinates-v8-restroom-real-address';
     const targets = ANYANG_FACILITIES.filter(isGeocodedFacility);
     let cached: Record<string, Coordinates> = {};
 
@@ -905,6 +905,8 @@ export default function App() {
     };
 
     applyCoordinates(cached);
+    // v7 intentionally rebuilds restroom coordinates once because older generated
+    // data used dong-level fallback points and caused markers to overlap.
     const pendingFacilities = targets.filter((facility) => !cached[facility.id]);
     if (pendingFacilities.length === 0) return () => { cancelled = true; };
 
@@ -928,6 +930,7 @@ export default function App() {
           }
           applyCoordinates(resolved);
         }
+        await new Promise((resolve) => setTimeout(resolve, 250));
       }
     };
 
@@ -1343,6 +1346,7 @@ export default function App() {
             onToggleHeadingLock={() => setIsHeadingLocked((prev) => !prev)}
             riderPosition={riderPosition}
             activePoiFilters={activePoiFilters}
+            alwaysVisibleCategories={['restroom']}
             facilities={mappedFacilities}
             onSelectFacility={(fac) => setSelectedFacilityDetail(fac)}
             reports={reports}

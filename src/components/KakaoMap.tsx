@@ -14,6 +14,7 @@ export interface KakaoMapProps {
   isHeadingLocked?: boolean; // true = 1st person Heading-Up, false = 2D North-Up
   onToggleHeadingLock?: () => void;
   activePoiFilters?: POICategory[];
+  alwaysVisibleCategories?: POICategory[];
   facilities?: Facility[];
   showAllFacilities?: boolean;
   highlightFacilityId?: string | null;
@@ -60,6 +61,7 @@ export default function KakaoMap({
   isHeadingLocked = true,
   onToggleHeadingLock,
   activePoiFilters = [],
+  alwaysVisibleCategories = [],
   facilities = [],
   showAllFacilities = false,
   highlightFacilityId = null,
@@ -411,12 +413,13 @@ export default function KakaoMap({
   // 5. Clean POI Markers with Counter-Rotation
   useEffect(() => {
     const hasActiveFilters = activePoiFilters.length > 0;
-    const shouldShow = showAllFacilities || hasActiveFilters || !!highlightFacilityId;
+    const shouldShow = showAllFacilities || hasActiveFilters || alwaysVisibleCategories.length > 0 || !!highlightFacilityId;
 
     const filtered = shouldShow
       ? facilities.filter((fac) => {
           if (highlightFacilityId === fac.id) return true;
           if (showAllFacilities) return true;
+          if (alwaysVisibleCategories.includes(fac.category)) return true;
           return activePoiFilters.includes(fac.category);
         })
       : [];
@@ -525,7 +528,7 @@ export default function KakaoMap({
         layerGroup.addLayer(marker);
       });
     }
-  }, [engine, facilities, activePoiFilters, showAllFacilities, highlightFacilityId, onSelectFacility]);
+  }, [engine, facilities, activePoiFilters, alwaysVisibleCategories, showAllFacilities, highlightFacilityId, onSelectFacility]);
 
   // Active community reports are visible even when facility filters are off.
   useEffect(() => {
