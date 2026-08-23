@@ -25,6 +25,7 @@ import { playVoiceSample, stopVoice } from '../utils/ttsVoice';
 
 interface ProfileTabProps {
   preferences: UserPreferences;
+  currentCoordinates?: { lat: number; lng: number };
   onUpdatePreferences: (prefs: UserPreferences) => void;
   reports?: CommunityReport[];
   onAddReport?: (report: CommunityReport) => void;
@@ -33,6 +34,7 @@ interface ProfileTabProps {
 
 export default function ProfileTab({
   preferences,
+  currentCoordinates,
   onUpdatePreferences,
   reports: propReports,
   onAddReport,
@@ -129,6 +131,7 @@ export default function ProfileTab({
 
     const created: CommunityReport = {
       id: `rep-${Date.now()}`,
+      coordinates: currentCoordinates,
       category: newReport.category,
       categoryName: categoryNames[newReport.category],
       title: newReport.title.trim(),

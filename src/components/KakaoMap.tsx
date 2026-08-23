@@ -84,6 +84,7 @@ export default function KakaoMap({
   const kakaoPoiMarkersRef = useRef<any[]>([]);
   const kakaoPoiClustererRef = useRef<any>(null);
   const kakaoReportMarkersRef = useRef<any[]>([]);
+  const kakaoReportOverlaysRef = useRef<any[]>([]);
 
   // Leaflet Fallback Ref
   const leafletMapRef = useRef<L.Map | null>(null);
@@ -533,14 +534,24 @@ export default function KakaoMap({
     if (engine === 'kakao' && kakaoMapRef.current) {
       const kakao = (window as any).kakao;
       kakaoReportMarkersRef.current.forEach((marker) => marker.setMap(null));
+      kakaoReportOverlaysRef.current.forEach((overlay) => overlay.setMap(null));
+      kakaoReportOverlaysRef.current = [];
       kakaoReportMarkersRef.current = activeReports.map((report) => {
-        const marker = new kakao.maps.Marker({
-          map: kakaoMapRef.current,
-          position: new kakao.maps.LatLng(report.coordinates!.lat, report.coordinates!.lng),
-          title: report.categoryName,
-          zIndex: 45,
-        });
+        const position = new kakao.maps.LatLng(report.coordinates!.lat, report.coordinates!.lng);
+        const marker = new kakao.maps.Marker({ position, title: report.categoryName, zIndex: 45 });
         kakao.maps.event.addListener(marker, 'click', () => onSelectReport?.(report));
+        marker.setMap(kakaoMapRef.current);
+
+        const content = document.createElement('button');
+        content.type = 'button';
+        content.title = `${report.categoryName}: ${report.location}`;
+        content.setAttribute('aria-label', `${report.categoryName} 제보: ${report.location}`);
+        content.style.cssText = 'width:32px;height:32px;border-radius:50%;border:3px solid #fff;background:#dc2626;color:#fff;font-size:18px;font-weight:900;line-height:26px;box-shadow:0 3px 10px rgba(127,29,29,.45);cursor:pointer;';
+        content.textContent = '!';
+        content.onclick = () => onSelectReport?.(report);
+        const overlay = new kakao.maps.CustomOverlay({ position, content, yAnchor: 0.5, zIndex: 46 });
+        overlay.setMap(kakaoMapRef.current);
+        kakaoReportOverlaysRef.current.push(overlay);
         return marker;
       });
     } else if (engine === 'leaflet' && leafletReportGroupRef.current) {

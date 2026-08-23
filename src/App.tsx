@@ -772,9 +772,24 @@ export default function App() {
   const [reportCoordinates, setReportCoordinates] = useState<{ lat: number; lng: number } | undefined>();
   const [routeWarning, setRouteWarning] = useState<CommunityReport | null>(null);
   const [warningRouteKey, setWarningRouteKey] = useState<string | null>(null);
+  const lastTriggeredReportIdRef = useRef<string | null>(null);
 
   const handleAddReport = (newRep: CommunityReport) => {
-    setReports((prev) => [newRep, ...prev]);
+    const fallbackPoint = riderPosition || (selectedCourse.path[0]
+      ? { lat: selectedCourse.path[0][0], lng: selectedCourse.path[0][1] }
+      : undefined);
+    const reportWithCoordinates = newRep.coordinates
+      ? newRep
+      : { ...newRep, coordinates: fallbackPoint };
+    setReports((prev) => [reportWithCoordinates, ...prev]);
+    if (
+      appState !== 'idle' &&
+      reportWithCoordinates.status === 'active' &&
+      reportWithCoordinates.coordinates &&
+      getPointToPolylineDistanceMeters(reportWithCoordinates.coordinates, selectedCourse.path) <= 40
+    ) {
+      setRouteWarning(reportWithCoordinates);
+    }
   };
 
   const checkRouteReports = (path: [number, number][], routeKey: string) => {
@@ -862,6 +877,22 @@ export default function App() {
 
   // Rider position
   const [riderPosition, setRiderPosition] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    if (appState === 'idle' || !riderPosition || routeWarning) return;
+    const nearbyReport = reports.find((report) =>
+      report.status === 'active' &&
+      report.coordinates &&
+      getPointToPolylineDistanceMeters(report.coordinates, [[riderPosition.lat, riderPosition.lng]]) <= 40
+    );
+    if (!nearbyReport) {
+      lastTriggeredReportIdRef.current = null;
+    } else if (nearbyReport.id !== lastTriggeredReportIdRef.current) {
+      lastTriggeredReportIdRef.current = nearbyReport.id;
+      setRouteWarning(nearbyReport);
+    }
+  }, [appState, riderPosition, reports, routeWarning]);
+
   const isGeocodedFacility = (facility: Facility) =>
     facility.category === 'restroom' || facility.category === 'parking' || facility.facilityType === '공기주입기';
   const [mappedFacilities, setMappedFacilities] = useState<Facility[]>(ANYANG_FACILITIES);
@@ -1591,6 +1622,7 @@ export default function App() {
         {currentTab === 'profile' && (
           <ProfileTab
             preferences={preferences}
+            currentCoordinates={riderPosition || undefined}
             onUpdatePreferences={(p) => setPreferences(p)}
             reports={reports}
             onAddReport={handleAddReport}
