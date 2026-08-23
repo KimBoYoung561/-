@@ -71,6 +71,61 @@ export interface PlaceSearchResult {
   phone?: string;
 }
 
+export interface Coordinates {
+  lat: number;
+  lng: number;
+}
+
+function normalizeGeocodingText(value: string): string {
+  return value
+    .replace(/\uFEFF/g, '')
+    .replace(/안\s*양\s*시/g, '안양시')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function toCoordinates(result: any): Coordinates | null {
+  const lat = Number(result?.y);
+  const lng = Number(result?.x);
+  return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+}
+
+/** Resolves a facility address or installation place, then returns only valid coordinates. */
+export async function geocodeFacilityLocation(name: string, address: string, preferPlaceSearch = false): Promise<Coordinates | null> {
+  try {
+    const maps = await loadKakaoMapsServices();
+    if (!maps?.services) return null;
+    const normalizedAddress = normalizeGeocodingText(address);
+    if (!normalizedAddress) return null;
+
+    const placeSearch = async (): Promise<Coordinates | null> => {
+      if (!maps.services.Places) return null;
+      const places = new maps.services.Places();
+      return new Promise<Coordinates | null>((resolve) => {
+        places.keywordSearch(`${name} ${normalizedAddress}`, (result: any[], status: any) => {
+          resolve(status === maps.services.Status.OK && result?.[0] ? toCoordinates(result[0]) : null);
+        }, { location: new maps.LatLng(37.3943, 126.9568), radius: 20000 });
+      });
+    };
+
+    const addressSearch = async (): Promise<Coordinates | null> => {
+      const geocoder = new maps.services.Geocoder();
+      return new Promise<Coordinates | null>((resolve) => {
+        geocoder.addressSearch(normalizedAddress, (result: any[], status: any) => {
+          resolve(status === maps.services.Status.OK && result?.[0] ? toCoordinates(result[0]) : null);
+        });
+      });
+    };
+
+    const preferredResult = preferPlaceSearch ? await placeSearch() : await addressSearch();
+    if (preferredResult) return preferredResult;
+    return preferPlaceSearch ? addressSearch() : placeSearch();
+  } catch (err) {
+    console.warn('Kakao facility geocoding error:', err);
+    return null;
+  }
+}
+
 /**
  * Converts lat, lng coordinates into real road / lot-number address using Kakao Geocoder or OpenStreetMap Nominatim
  */
@@ -144,7 +199,7 @@ export async function searchKakaoPlaces(keyword: string): Promise<PlaceSearchRes
     const maps = await loadKakaoMapsServices();
     if (maps && maps.services?.Places) {
       const ps = new maps.services.Places();
-      return new Promise<PlaceSearchResult[]>((resolve) => {
+      const placeResults = await new Promise<PlaceSearchResult[]>((resolve) => {
         // Search prioritizing Anyang region coordinates
         ps.keywordSearch(
           keyword,
@@ -161,6 +216,34 @@ export async function searchKakaoPlaces(keyword: string): Promise<PlaceSearchRes
           }
         );
       });
+
+        if (placeResults.length > 0) return placeResults;
+
+        // Keyword search can miss a raw road or lot-number address. Try the
+        // address geocoder before reporting that there are no results.
+        if (maps.services.Geocoder) {
+          const geocoder = new maps.services.Geocoder();
+          return new Promise<PlaceSearchResult[]>((resolve) => {
+            geocoder.addressSearch(keyword.trim(), (data: any[], status: any) => {
+              if (status !== maps.services.Status.OK || !data?.[0]) {
+                resolve([]);
+                return;
+              }
+
+              const result = data[0];
+              resolve([{
+                id: `address-${result.x}-${result.y}`,
+                place_name: keyword.trim(),
+                road_address_name: result.road_address?.address_name,
+                address_name: result.address?.address_name || keyword.trim(),
+                x: result.x,
+                y: result.y,
+              }]);
+            });
+          });
+        }
+
+        return [];
     }
   } catch (err) {
     console.warn('Kakao keywordSearch error:', err);

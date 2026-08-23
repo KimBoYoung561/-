@@ -3,6 +3,7 @@ import { CommunityReport } from '../types';
 export const INITIAL_COMMUNITY_REPORTS: CommunityReport[] = [
   {
     id: 'rep-1',
+    coordinates: { lat: 37.3789, lng: 126.9387 },
     category: 'closure',
     categoryName: '길 통제/공사',
     title: '안양천 충훈교 하부 수변길 준설 공사로 임시 우회로 운영',
@@ -14,6 +15,7 @@ export const INITIAL_COMMUNITY_REPORTS: CommunityReport[] = [
   },
   {
     id: 'rep-2',
+    coordinates: { lat: 37.3896, lng: 126.9684 },
     category: 'accident',
     categoryName: '사고/낙차 주의',
     title: '학의천 수촌교 합수부 급커브 보행자 밀집 구간 낙차 주의',
@@ -25,6 +27,7 @@ export const INITIAL_COMMUNITY_REPORTS: CommunityReport[] = [
   },
   {
     id: 'rep-3',
+    coordinates: { lat: 37.4061, lng: 126.9255 },
     category: 'damage',
     categoryName: '도로 파손/요철',
     title: '삼성천 안양예술공원 입구 노면 블록 단차 보수 완료',
@@ -36,6 +39,7 @@ export const INITIAL_COMMUNITY_REPORTS: CommunityReport[] = [
   },
   {
     id: 'rep-4',
+    coordinates: { lat: 37.4211, lng: 126.9118 },
     category: 'hazard',
     categoryName: '장애물/토사',
     title: '삼막천 석수체육공원 앞 빗물 토사 퇴적으로 슬립 위험',

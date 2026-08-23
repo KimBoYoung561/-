@@ -88,6 +88,7 @@ export default function SearchModal({
   const [currentTimeStr, setCurrentTimeStr] = useState('');
 
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const searchRequestIdRef = useRef(0);
   const destInputRef = useRef<HTMLInputElement>(null);
 
   // Load / Save Recent Searches from localStorage
@@ -150,6 +151,7 @@ export default function SearchModal({
   const handleOriginInputChange = (text: string) => {
     setTempOrigin(text);
     setOriginCoords(undefined);
+    const requestId = ++searchRequestIdRef.current;
 
     if (searchDebounceRef.current) {
       clearTimeout(searchDebounceRef.current);
@@ -170,7 +172,7 @@ export default function SearchModal({
     searchDebounceRef.current = setTimeout(async () => {
       try {
         const places = await searchKakaoPlaces(text.trim());
-        setKakaoResults(places || []);
+        if (requestId === searchRequestIdRef.current) setKakaoResults(places || []);
       } catch (err) {
         console.warn('Place search failed:', err);
       } finally {
@@ -183,6 +185,7 @@ export default function SearchModal({
   const handleDestInputChange = (text: string) => {
     setTempDest(text);
     setDestCoords(undefined);
+    const requestId = ++searchRequestIdRef.current;
 
     if (searchDebounceRef.current) {
       clearTimeout(searchDebounceRef.current);
@@ -203,7 +206,7 @@ export default function SearchModal({
     searchDebounceRef.current = setTimeout(async () => {
       try {
         const places = await searchKakaoPlaces(text.trim());
-        setKakaoResults(places || []);
+        if (requestId === searchRequestIdRef.current) setKakaoResults(places || []);
       } catch (err) {
         console.warn('Place search failed:', err);
       } finally {

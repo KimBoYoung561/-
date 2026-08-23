@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback, type PointerEvent } from 'react';
-import { Facility, POICategory, RampAccessPoint } from '../types';
+import { CommunityReport, Facility, POICategory, RampAccessPoint } from '../types';
 import { loadKakaoMapsServices } from '../services/kakaoService';
 import { Layers, Plus, Minus, Check, Compass, Crosshair } from 'lucide-react';
 import L from 'leaflet';
@@ -21,6 +21,8 @@ export interface KakaoMapProps {
   onSelectRampPoint?: (ramp: RampAccessPoint) => void;
   onOpenOfficialGuide?: () => void;
   onMapClick?: (lat: number, lng: number) => void;
+  reports?: CommunityReport[];
+  onSelectReport?: (report: CommunityReport) => void;
   isRiding?: boolean;
   isSheetExpanded?: boolean;
 }
@@ -34,6 +36,19 @@ const POI_ICONS: Record<POICategory, { emoji: string; color: string; label: stri
   cafe: { emoji: '☕', color: '#e11d48', label: '편의점/카페' },
   hazard: { emoji: '⚠️', color: '#ea580c', label: '주의구간' },
 };
+
+function getVisualMarkerPosition(facility: Facility, facilities: Facility[]) {
+  const sameLocation = facilities.filter((item) => item.lat === facility.lat && item.lng === facility.lng);
+  if (sameLocation.length <= 1) return { lat: facility.lat, lng: facility.lng };
+
+  const occurrence = sameLocation.indexOf(facility);
+  const angle = (occurrence / sameLocation.length) * Math.PI * 2;
+  const radius = 0.000045;
+  return {
+    lat: facility.lat + Math.sin(angle) * radius,
+    lng: facility.lng + Math.cos(angle) * radius,
+  };
+}
 
 export default function KakaoMap({
   center,
@@ -50,6 +65,8 @@ export default function KakaoMap({
   highlightFacilityId = null,
   onSelectFacility,
   onMapClick,
+  reports = [],
+  onSelectReport,
   isRiding = false,
   isSheetExpanded = false,
 }: KakaoMapProps) {
@@ -64,6 +81,9 @@ export default function KakaoMap({
   const kakaoEndOverlayRef = useRef<any>(null);
   const kakaoRiderOverlayRef = useRef<any>(null);
   const kakaoPoiOverlaysRef = useRef<any[]>([]);
+  const kakaoPoiMarkersRef = useRef<any[]>([]);
+  const kakaoPoiClustererRef = useRef<any>(null);
+  const kakaoReportMarkersRef = useRef<any[]>([]);
 
   // Leaflet Fallback Ref
   const leafletMapRef = useRef<L.Map | null>(null);
@@ -73,6 +93,12 @@ export default function KakaoMap({
   const leafletEndMarkerRef = useRef<L.Marker | null>(null);
   const leafletRiderMarkerRef = useRef<L.Marker | null>(null);
   const leafletPoiGroupRef = useRef<L.LayerGroup | null>(null);
+  const leafletReportGroupRef = useRef<L.LayerGroup | null>(null);
+  const onMapClickRef = useRef(onMapClick);
+
+  useEffect(() => {
+    onMapClickRef.current = onMapClick;
+  }, [onMapClick]);
 
   // Engine state: 'kakao' | 'leaflet'
   const [engine, setEngine] = useState<'kakao' | 'leaflet' | null>(null);
@@ -121,8 +147,8 @@ export default function KakaoMap({
 
           kakao.maps.event.addListener(map, 'click', (mouseEvent: any) => {
             const latlng = mouseEvent.latLng;
-            if (onMapClick) {
-              onMapClick(latlng.getLat(), latlng.getLng());
+            if (onMapClickRef.current) {
+              onMapClickRef.current(latlng.getLat(), latlng.getLng());
             }
           });
 
@@ -148,10 +174,11 @@ export default function KakaoMap({
         }).addTo(map);
 
         leafletPoiGroupRef.current = L.layerGroup().addTo(map);
+        leafletReportGroupRef.current = L.layerGroup().addTo(map);
         leafletMapRef.current = map;
 
         map.on('click', (e) => {
-          if (onMapClick) onMapClick(e.latlng.lat, e.latlng.lng);
+          if (onMapClickRef.current) onMapClickRef.current(e.latlng.lat, e.latlng.lng);
         });
 
         setEngine('leaflet');
@@ -400,40 +427,69 @@ export default function KakaoMap({
 
       kakaoPoiOverlaysRef.current.forEach((overlay) => overlay.setMap(null));
       kakaoPoiOverlaysRef.current = [];
+      kakaoPoiClustererRef.current?.clear();
+      kakaoPoiClustererRef.current = null;
+      kakaoPoiMarkersRef.current.forEach((marker) => marker.setMap(null));
+      kakaoPoiMarkersRef.current = [];
 
+      const markers: any[] = [];
       filtered.forEach((fac) => {
         const isHighlighted = highlightFacilityId === fac.id;
         const iconInfo = POI_ICONS[fac.category] || { emoji: '📍', color: '#2563EB', label: '시설' };
+        const markerPosition = getVisualMarkerPosition(fac, filtered);
+        const iconSize = isHighlighted ? 36 : 30;
+        const iconSvg = encodeURIComponent(`
+          <svg xmlns="http://www.w3.org/2000/svg" width="${iconSize}" height="${iconSize}" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="44" fill="white" stroke="${iconInfo.color}" stroke-width="8"/>
+            <text x="50" y="57" text-anchor="middle" dominant-baseline="middle" font-size="48">${iconInfo.emoji}</text>
+          </svg>
+        `);
+        const markerImage = new kakao.maps.MarkerImage(
+          `data:image/svg+xml;charset=UTF-8,${iconSvg}`,
+          new kakao.maps.Size(iconSize, iconSize),
+          { offset: new kakao.maps.Point(iconSize / 2, iconSize / 2) },
+        );
 
-        const content = document.createElement('div');
-        content.className = 'navi-counter-rotate';
-        content.innerHTML = `
-          <div style="cursor:pointer; display:flex; flex-direction:column; align-items:center;" title="${fac.name}">
-            <div style="width:${isHighlighted ? '32px' : '26px'}; height:${isHighlighted ? '32px' : '26px'}; border-radius:50%; background:#FFFFFF; border:2px solid ${iconInfo.color}; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.18); font-size:${isHighlighted ? '14px' : '12px'}; transition:all 0.2s;">
-              ${iconInfo.emoji}
-            </div>
-            ${
-              isHighlighted
-                ? `<div style="margin-top:2px; background:rgba(15,23,42,0.9); color:#FFFFFF; border-radius:8px; padding:2px 6px; font-size:10px; font-weight:700; white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,0.2);">
-                    ${fac.name}
-                  </div>`
-                : ''
-            }
-          </div>
-        `;
-        content.onclick = () => {
-          if (onSelectFacility) onSelectFacility(fac);
-        };
-
-        const overlay = new kakao.maps.CustomOverlay({
-          position: new kakao.maps.LatLng(fac.lat, fac.lng),
-          content,
-          yAnchor: 0.5,
+        const marker = new kakao.maps.Marker({
+          position: new kakao.maps.LatLng(markerPosition.lat, markerPosition.lng),
+          image: markerImage,
+          title: fac.name,
           zIndex: isHighlighted ? 40 : 20,
         });
-        overlay.setMap(map);
-        kakaoPoiOverlaysRef.current.push(overlay);
+        kakao.maps.event.addListener(marker, 'click', () => onSelectFacility?.(fac));
+        markers.push(marker);
+
+        if (isHighlighted) {
+          const label = document.createElement('div');
+          label.className = 'navi-counter-rotate';
+          label.style.cssText = 'background:rgba(15,23,42,0.9);color:#fff;border-radius:8px;padding:2px 6px;font-size:10px;font-weight:700;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.2);';
+          label.textContent = fac.name;
+          const overlay = new kakao.maps.CustomOverlay({
+            position: new kakao.maps.LatLng(markerPosition.lat, markerPosition.lng),
+            content: label,
+            yAnchor: 1.8,
+            zIndex: 41,
+          });
+          overlay.setMap(map);
+          kakaoPoiOverlaysRef.current.push(overlay);
+        }
       });
+
+      kakaoPoiMarkersRef.current = markers;
+      if (markers.length > 0 && kakao.maps.MarkerClusterer) {
+        // Kakao's clusterer keeps dense facility areas readable while preserving custom icons.
+        kakaoPoiClustererRef.current = new kakao.maps.MarkerClusterer({
+          map,
+          averageCenter: true,
+          // Keep individual restroom/bike icons visible at the default level 5.
+          // Cluster only after the user zooms farther out.
+          minLevel: 8,
+          disableClickZoom: false,
+        });
+        kakaoPoiClustererRef.current.addMarkers(markers);
+      } else {
+        markers.forEach((marker) => marker.setMap(map));
+      }
     }
     // Leaflet POI Markers
     else if (engine === 'leaflet' && leafletPoiGroupRef.current) {
@@ -443,6 +499,7 @@ export default function KakaoMap({
       filtered.forEach((fac) => {
         const isHighlighted = highlightFacilityId === fac.id;
         const iconInfo = POI_ICONS[fac.category] || { emoji: '📍', color: '#2563EB', label: '시설' };
+        const markerPosition = getVisualMarkerPosition(fac, filtered);
 
         const poiHtml = `
           <div class="navi-counter-rotate" style="cursor:pointer; display:flex; flex-direction:column; align-items:center;" title="${fac.name}">
@@ -460,7 +517,7 @@ export default function KakaoMap({
         `;
 
         const icon = L.divIcon({ className: 'custom-bike-marker', html: poiHtml, iconSize: [80, 40], iconAnchor: [40, 13] });
-        const marker = L.marker([fac.lat, fac.lng], { icon, zIndexOffset: isHighlighted ? 40 : 20 });
+        const marker = L.marker([markerPosition.lat, markerPosition.lng], { icon, zIndexOffset: isHighlighted ? 40 : 20 });
         marker.on('click', () => {
           if (onSelectFacility) onSelectFacility(fac);
         });
@@ -468,6 +525,40 @@ export default function KakaoMap({
       });
     }
   }, [engine, facilities, activePoiFilters, showAllFacilities, highlightFacilityId, onSelectFacility]);
+
+  // Active community reports are visible even when facility filters are off.
+  useEffect(() => {
+    const activeReports = reports.filter((report) => report.status === 'active' && report.coordinates);
+
+    if (engine === 'kakao' && kakaoMapRef.current) {
+      const kakao = (window as any).kakao;
+      kakaoReportMarkersRef.current.forEach((marker) => marker.setMap(null));
+      kakaoReportMarkersRef.current = activeReports.map((report) => {
+        const marker = new kakao.maps.Marker({
+          map: kakaoMapRef.current,
+          position: new kakao.maps.LatLng(report.coordinates!.lat, report.coordinates!.lng),
+          title: report.categoryName,
+          zIndex: 45,
+        });
+        kakao.maps.event.addListener(marker, 'click', () => onSelectReport?.(report));
+        return marker;
+      });
+    } else if (engine === 'leaflet' && leafletReportGroupRef.current) {
+      leafletReportGroupRef.current.clearLayers();
+      activeReports.forEach((report) => {
+        const icon = L.divIcon({
+          className: 'custom-bike-marker',
+          html: '<div style="width:30px;height:30px;border-radius:50%;background:#dc2626;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:15px">!</div>',
+          iconSize: [30, 30],
+          iconAnchor: [15, 15],
+        });
+        const marker = L.marker([report.coordinates!.lat, report.coordinates!.lng], { icon, zIndexOffset: 100 });
+        marker.bindTooltip(`${report.categoryName}: ${report.location}`);
+        marker.on('click', () => onSelectReport?.(report));
+        leafletReportGroupRef.current!.addLayer(marker);
+      });
+    }
+  }, [engine, reports, onSelectReport]);
 
   // 6. Navigation 3D Direction Arrow Marker (진행 방향 3D 화살표 마커)
   const createNaviArrowHtml = (deg: number) => {

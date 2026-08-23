@@ -17,6 +17,31 @@ export interface RouteResult {
   unsegregatedRatio: number;   // 비분리도로 (%) - 하늘색 (Sky Blue: #38BDF8)
 }
 
+function getPointToPathDistanceMeters(point: LatLng, path: [number, number][]): number {
+  if (path.length === 0) return Infinity;
+  const latitudeScale = 111320;
+  const longitudeScale = Math.cos((point.lat * Math.PI) / 180) * latitudeScale;
+  let minimumDistance = Infinity;
+
+  for (let index = 0; index < path.length - 1; index += 1) {
+    const startX = (path[index][1] - point.lng) * longitudeScale;
+    const startY = (path[index][0] - point.lat) * latitudeScale;
+    const endX = (path[index + 1][1] - point.lng) * longitudeScale;
+    const endY = (path[index + 1][0] - point.lat) * latitudeScale;
+    const dx = endX - startX;
+    const dy = endY - startY;
+    const lengthSquared = dx * dx + dy * dy;
+    const ratio = lengthSquared === 0
+      ? 0
+      : Math.max(0, Math.min(1, -(startX * dx + startY * dy) / lengthSquared));
+    minimumDistance = Math.min(minimumDistance, Math.hypot(startX + ratio * dx, startY + ratio * dy));
+  }
+
+  return path.length === 1
+    ? Math.hypot((path[0][1] - point.lng) * longitudeScale, (path[0][0] - point.lat) * latitudeScale)
+    : minimumDistance;
+}
+
 /**
  * Calculate Anyang Official Bicycle Road Type Breakdown based on official notification map:
  * - 하천변 도로: 빨간색 (Red: #EF4444)
@@ -341,7 +366,9 @@ export async function calculateRealBikeRoute(
   originCoords: LatLng,
   destCoords: LatLng,
   originName: string,
-  destName: string
+  destName: string,
+  avoidPoint?: LatLng,
+  avoidSide: 1 | -1 = 1
 ): Promise<RouteResult> {
   const startLat = originCoords.lat;
   const startLng = originCoords.lng;
@@ -353,7 +380,17 @@ export async function calculateRealBikeRoute(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2500);
 
-    const url = `https://router.project-osrm.org/route/v1/bicycle/${startLng},${startLat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true`;
+    let routePoints = `${startLng},${startLat};${destLng},${destLat}`;
+    if (avoidPoint) {
+      const directionLat = destLat - startLat;
+      const directionLng = destLng - startLng;
+      const length = Math.hypot(directionLat, directionLng) || 1;
+      const detourOffset = 0.0007;
+      const bypassLat = avoidPoint.lat - (directionLng / length) * detourOffset * avoidSide;
+      const bypassLng = avoidPoint.lng + (directionLat / length) * detourOffset * avoidSide;
+      routePoints = `${startLng},${startLat};${bypassLng},${bypassLat};${destLng},${destLat}`;
+    }
+    const url = `https://router.project-osrm.org/route/v1/bicycle/${routePoints}?overview=full&geometries=geojson&steps=true`;
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timeoutId);
 
@@ -379,7 +416,10 @@ export async function calculateRealBikeRoute(
 
           const breakdown = calculateRoadTypeBreakdown(rawCoords);
 
-          return {
+          if (avoidPoint && getPointToPathDistanceMeters(avoidPoint, rawCoords) < 40) {
+            console.warn('OSRM route remained too close to the reported segment; using forced bypass fallback.');
+          } else {
+            return {
             path: rawCoords,
             distanceKm: distKm,
             timeMinutes: timeMins,
@@ -391,7 +431,8 @@ export async function calculateRealBikeRoute(
             riverPathRatio: breakdown.riverPathRatio,
             segregatedRatio: breakdown.segregatedRatio,
             unsegregatedRatio: breakdown.unsegregatedRatio,
-          };
+            };
+          }
         }
       }
     }
@@ -400,6 +441,34 @@ export async function calculateRealBikeRoute(
   }
 
   // 2. High-Accuracy Dense Topological Anyang Bike Network Router (Fallback)
+  if (avoidPoint) {
+    const directionLat = destLat - startLat;
+    const directionLng = destLng - startLng;
+    const length = Math.hypot(directionLat, directionLng) || 1;
+    const detourOffset = 0.0007 * avoidSide;
+    const bypassPoint: LatLng = {
+      lat: avoidPoint.lat - (directionLng / length) * detourOffset,
+      lng: avoidPoint.lng + (directionLat / length) * detourOffset,
+    };
+    const firstLeg = calculateAnyangDenseRoadRoute(originCoords, bypassPoint, originName, '제보 구간 우회 지점');
+    const secondLeg = calculateAnyangDenseRoadRoute(bypassPoint, destCoords, '제보 구간 우회 지점', destName);
+    const breakdown = calculateRoadTypeBreakdown([...firstLeg.path, ...secondLeg.path]);
+
+    return {
+      path: [...firstLeg.path, ...secondLeg.path.slice(1)],
+      distanceKm: Math.round((firstLeg.distanceKm + secondLeg.distanceKm) * 10) / 10,
+      timeMinutes: firstLeg.timeMinutes + secondLeg.timeMinutes,
+      calories: firstLeg.calories + secondLeg.calories,
+      navSteps: [...firstLeg.navSteps.slice(0, -1), ...secondLeg.navSteps],
+      dedicatedBikeRatio: breakdown.dedicatedBikeRatio,
+      sharedBikeRatio: breakdown.sharedBikeRatio,
+      sidewalkRatio: breakdown.sidewalkRatio,
+      riverPathRatio: breakdown.riverPathRatio,
+      segregatedRatio: breakdown.segregatedRatio,
+      unsegregatedRatio: breakdown.unsegregatedRatio,
+    };
+  }
+
   return calculateAnyangDenseRoadRoute(originCoords, destCoords, originName, destName);
 }
 

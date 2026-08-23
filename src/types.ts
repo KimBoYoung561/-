@@ -81,7 +81,7 @@ export interface Facility {
   name: string;
   category: POICategory;
   categoryName: string;
-  facilityType?: '공중화장실' | '개방화장실' | '음수대' | '수리시설' | '공기주입기' | '자전거보관소' | '라이더카페' | '주의구간';
+  facilityType?: '공중화장실' | '개방화장실' | '음수대' | '수리시설' | '공기주입기' | '자전거보관소' | '라이더카페' | '주의구간' | '횡단보도';
   address: string;
   roadAddress?: string;
   lat: number;
@@ -118,6 +118,7 @@ export type ReportCategory = 'closure' | 'accident' | 'damage' | 'hazard' | 'flo
 
 export interface CommunityReport {
   id: string;
+  coordinates?: LatLng;
   category: ReportCategory;
   categoryName: string;
   title: string;

@@ -101,10 +101,12 @@ export async function fetchCustomOptimalRouteAsync(
   destName: string,
   destCoords: LatLng,
   routeType: 'oneway' | 'roundtrip' = 'oneway',
-  preferredFilter?: string
+  preferredFilter?: string,
+  avoidPoint?: LatLng,
+  avoidSide: 1 | -1 = 1
 ): Promise<Course> {
   const isRoundTrip = routeType === 'roundtrip';
-  const result = await calculateRealBikeRoute(originCoords, destCoords, originName, destName);
+  const result = await calculateRealBikeRoute(originCoords, destCoords, originName, destName, avoidPoint, avoidSide);
 
   let finalPath = [...result.path];
   let finalNavSteps = [...result.navSteps];

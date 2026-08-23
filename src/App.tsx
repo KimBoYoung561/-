@@ -54,8 +54,8 @@ import {
   getCurrentTimeString,
   getCalculatedArrivalTime,
 } from './utils/routeUtils';
-import { coordToAddress } from './services/kakaoService';
-import { getBearing } from './utils/navigationMath';
+import { coordToAddress, geocodeFacilityLocation, Coordinates } from './services/kakaoService';
+import { getBearing, getPointToPolylineDistanceMeters } from './utils/navigationMath';
 import MapComponent from './components/MapComponent';
 import NavigationHeader from './components/NavigationHeader';
 import NavigationInfoSheet from './components/NavigationInfoSheet';
@@ -769,9 +769,75 @@ export default function App() {
 
   // Real-time Community Reports state
   const [reports, setReports] = useState<CommunityReport[]>(INITIAL_COMMUNITY_REPORTS);
+  const [reportCoordinates, setReportCoordinates] = useState<{ lat: number; lng: number } | undefined>();
+  const [routeWarning, setRouteWarning] = useState<CommunityReport | null>(null);
+  const [warningRouteKey, setWarningRouteKey] = useState<string | null>(null);
 
   const handleAddReport = (newRep: CommunityReport) => {
     setReports((prev) => [newRep, ...prev]);
+  };
+
+  const checkRouteReports = (path: [number, number][], routeKey: string) => {
+    const nearbyReport = reports.find((report) =>
+      report.status === 'active' && report.coordinates &&
+      getPointToPolylineDistanceMeters(report.coordinates, path) <= 40
+    );
+    if (nearbyReport && warningRouteKey !== routeKey) {
+      setWarningRouteKey(routeKey);
+      setRouteWarning(nearbyReport);
+    }
+  };
+
+  const handleSelectReport = (report: CommunityReport) => {
+    if (
+      appState !== 'idle' &&
+      report.status === 'active' &&
+      report.coordinates &&
+      getPointToPolylineDistanceMeters(report.coordinates, selectedCourse.path) <= 40
+    ) {
+      setRouteWarning(report);
+    }
+  };
+
+  const createLocalDetourPath = (path: [number, number][], report: CommunityReport, side: 1 | -1): [number, number][] => {
+    if (!report.coordinates || path.length < 4) return path;
+    let closestIndex = 1;
+    let closestDistance = Infinity;
+    for (let index = 1; index < path.length - 1; index += 1) {
+      const distance = getPointToPolylineDistanceMeters(report.coordinates, [path[index - 1], path[index], path[index + 1]]);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = index;
+      }
+    }
+
+    const before = path[closestIndex - 1];
+    const after = path[closestIndex + 1];
+    const directionLat = after[0] - before[0];
+    const directionLng = after[1] - before[1];
+    const length = Math.hypot(directionLat, directionLng) || 1;
+    const offset = 0.00075 * side;
+    const bypassBefore: [number, number] = [before[0] - (directionLng / length) * offset, before[1] + (directionLat / length) * offset];
+    const bypassAfter: [number, number] = [after[0] - (directionLng / length) * offset, after[1] + (directionLat / length) * offset];
+
+    return [...path.slice(0, closestIndex - 1), before, bypassBefore, bypassAfter, after, ...path.slice(closestIndex + 2)];
+  };
+
+  const rerouteAroundReport = (report: CommunityReport) => {
+    if (!report.coordinates) return;
+    setRouteWarning(null);
+    const firstPath = createLocalDetourPath(selectedCourse.path, report, 1);
+    const secondPath = createLocalDetourPath(selectedCourse.path, report, -1);
+    const reroutedPath = getPointToPolylineDistanceMeters(report.coordinates, firstPath) >= getPointToPolylineDistanceMeters(report.coordinates, secondPath)
+      ? firstPath
+      : secondPath;
+    setSelectedCourse((previous) => ({
+      ...previous,
+      path: reroutedPath,
+      description: `${previous.description} ${report.categoryName} 제보 구간만 피해 재탐색한 우회 경로입니다.`,
+    }));
+    setRemainingPath(reroutedPath);
+    setPassedPath([]);
   };
 
   const handleToggleLikeReport = (id: string) => {
@@ -796,6 +862,61 @@ export default function App() {
 
   // Rider position
   const [riderPosition, setRiderPosition] = useState<{ lat: number; lng: number } | null>(null);
+  const isGeocodedFacility = (facility: Facility) =>
+    facility.category === 'restroom' || facility.category === 'parking' || facility.facilityType === '공기주입기';
+  const [mappedFacilities, setMappedFacilities] = useState<Facility[]>(ANYANG_FACILITIES);
+
+  // Resolve source addresses to real map coordinates once, then reuse them on later visits.
+  useEffect(() => {
+    let cancelled = false;
+    const cacheKey = 'anyang-facility-coordinates-v6-restroom-address-first';
+    const targets = ANYANG_FACILITIES.filter(isGeocodedFacility);
+    let cached: Record<string, Coordinates> = {};
+
+    try {
+      cached = JSON.parse(localStorage.getItem(cacheKey) || '{}') as Record<string, Coordinates>;
+    } catch {
+      cached = {};
+    }
+
+    const applyCoordinates = (coordinates: Record<string, Coordinates>) => {
+      if (cancelled) return;
+      setMappedFacilities(ANYANG_FACILITIES.map((facility) => ({
+        ...facility,
+        ...(coordinates[facility.id] || {}),
+      })));
+    };
+
+    applyCoordinates(cached);
+    const pendingFacilities = targets.filter((facility) => !cached[facility.id]);
+    if (pendingFacilities.length === 0) return () => { cancelled = true; };
+
+    const resolved = { ...cached };
+    let nextIndex = 0;
+    const worker = async () => {
+      while (nextIndex < pendingFacilities.length && !cancelled) {
+        const facility = pendingFacilities[nextIndex++];
+        const address = facility.roadAddress || facility.address;
+        const coordinate = await geocodeFacilityLocation(
+          facility.name,
+          address,
+          facility.category === 'parking' || facility.facilityType === '공기주입기',
+        );
+        if (coordinate) {
+          resolved[facility.id] = coordinate;
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(resolved));
+          } catch {
+            // Coordinate caching is optional and must not block map rendering.
+          }
+          applyCoordinates(resolved);
+        }
+      }
+    };
+
+    void Promise.all(Array.from({ length: 4 }, () => worker()));
+    return () => { cancelled = true; };
+  }, []);
 
   // Real-time navigation & 1st-person tracking states
   const [heading, setHeading] = useState(0);
@@ -1041,7 +1162,8 @@ export default function App() {
     setRouteType(params.routeType);
 
     const startCoords = params.originCoords || riderPosition || ANYANG_CENTER;
-    const destCoords = params.destinationCoords || { lat: 37.3943, lng: 126.9568 };
+    const resolvedDestCoords = params.destinationCoords || await geocodeFacilityLocation('', params.destination);
+    const destCoords = resolvedDestCoords || { lat: 37.3943, lng: 126.9568 };
 
     if (params.originCoords) {
       setRiderPosition(params.originCoords);
@@ -1070,6 +1192,7 @@ export default function App() {
         params.preferredFilter
       );
       setSelectedCourse(initialCourse);
+      checkRouteReports(initialCourse.path, `${params.origin}|${params.destination}|${Date.now()}`);
 
       // Asynchronously fetch high-precision real road route & matching turn-by-turn steps
       fetchCustomOptimalRouteAsync(
@@ -1082,6 +1205,7 @@ export default function App() {
       )
         .then((realCourse) => {
           setSelectedCourse(realCourse);
+          checkRouteReports(realCourse.path, realCourse.id);
         })
         .catch((err) => {
           console.warn('Real route fetch fallback used:', err);
@@ -1182,7 +1306,7 @@ export default function App() {
       : '';
 
   return (
-    <div className={`relative h-[100dvh] w-full overflow-hidden bg-slate-100 select-none ${fontScaleClass}`}>
+    <div className={`app-scale relative h-[100dvh] w-full overflow-hidden bg-slate-100 select-none ${fontScaleClass}`}>
       {/* Background Radial Dots */}
       <div className="absolute inset-0 bg-grid-dots opacity-30 pointer-events-none" />
 
@@ -1201,8 +1325,14 @@ export default function App() {
             onToggleHeadingLock={() => setIsHeadingLocked((prev) => !prev)}
             riderPosition={riderPosition}
             activePoiFilters={activePoiFilters}
-            facilities={ANYANG_FACILITIES}
+            facilities={mappedFacilities}
             onSelectFacility={(fac) => setSelectedFacilityDetail(fac)}
+            reports={reports}
+            onSelectReport={handleSelectReport}
+            onMapClick={(lat, lng) => {
+              setReportCoordinates({ lat, lng });
+              setIsQuickReportOpen(true);
+            }}
             onSelectRampPoint={handleSelectRampPoint}
             onOpenOfficialGuide={() => setIsOfficialGuideOpen(true)}
             isRiding={appState === 'riding'}
@@ -1447,7 +1577,7 @@ export default function App() {
 
         {currentTab === 'facilities' && (
           <FacilitiesTab
-            facilities={ANYANG_FACILITIES}
+            facilities={mappedFacilities}
             riderPosition={riderPosition}
             onSelectFacilityOnMap={(fac) => {
               setSelectedFacilityDetail(fac);
@@ -1478,12 +1608,37 @@ export default function App() {
           isOpen={isQuickReportOpen}
           onClose={() => setIsQuickReportOpen(false)}
           currentLocationName={origin && origin !== '내 현재 위치' ? origin : '안양시 자전거도로 (현재 위치)'}
+          currentCoordinates={reportCoordinates || riderPosition || undefined}
           onSubmitReport={handleAddReport}
           onGoToReportPage={() => {
             setIsQuickReportOpen(false);
             setCurrentTab('profile');
           }}
         />
+
+        {routeWarning && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 p-4">
+            <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 shrink-0 text-red-600" size={22} />
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">경로 제보 알림</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">
+                    {routeWarning.location} 구간에서 {routeWarning.categoryName} 제보가 있습니다. 그냥 가시겠습니까? 우회 경로를 재탐색할까요?
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 flex gap-2">
+                <button type="button" onClick={() => setRouteWarning(null)} className="flex-1 rounded-xl border border-slate-200 py-3 text-xs font-bold text-slate-700">
+                  기존 경로 유지
+                </button>
+                <button type="button" onClick={() => { rerouteAroundReport(routeWarning); setRouteWarning(null); }} className="flex-1 rounded-xl bg-red-600 py-3 text-xs font-bold text-white">
+                  우회 재탐색
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <SearchModal
           isOpen={isSearchOpen}

@@ -14,6 +14,7 @@ interface QuickReportModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentLocationName?: string;
+  currentCoordinates?: { lat: number; lng: number };
   onSubmitReport: (report: CommunityReport) => void;
   onGoToReportPage: () => void;
 }
@@ -22,6 +23,7 @@ export default function QuickReportModal({
   isOpen,
   onClose,
   currentLocationName = '안양천·학의천 자전거길 부근',
+  currentCoordinates,
   onSubmitReport,
   onGoToReportPage,
 }: QuickReportModalProps) {
@@ -55,6 +57,7 @@ export default function QuickReportModal({
 
     const newRep: CommunityReport = {
       id: `rep-${Date.now()}`,
+      coordinates: currentCoordinates,
       category,
       categoryName: categoryNames[category],
       title: title.trim(),
@@ -179,7 +182,7 @@ export default function QuickReportModal({
 
             {/* Content Input */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">상세 내용 및 우회 안내</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">상세 내용</label>
               <textarea
                 rows={2}
                 placeholder="상황에 대해 간단히 설명해 주세요 (우회로 여부, 서행 권고, 바닥 모래/단차 등)"

@@ -76,6 +76,12 @@ export default function FacilitiesTab({
       icon: '☕',
       count: facilities.filter((f) => f.category === 'cafe').length,
     },
+    {
+      id: 'hazard',
+      label: '횡단보도',
+      icon: '🚸',
+      count: facilities.filter((f) => f.category === 'hazard').length,
+    },
   ], [facilities]);
 
   const userBaseLoc = riderPosition || ANYANG_CENTER;

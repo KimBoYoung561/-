@@ -62,6 +62,39 @@ export function getPolylineLengthMeters(points: [number, number][]): number {
   return total;
 }
 
+/** Returns the closest distance from a report point to a route polyline. */
+export function getPointToPolylineDistanceMeters(
+  point: { lat: number; lng: number },
+  path: [number, number][]
+): number {
+  if (!path || path.length === 0) return Infinity;
+  if (path.length === 1) return getDistanceMeters(point.lat, point.lng, path[0][0], path[0][1]);
+
+  const latitudeScale = 111320;
+  const longitudeScale = Math.cos((point.lat * Math.PI) / 180) * latitudeScale;
+  let minimumDistance = Infinity;
+
+  for (let index = 0; index < path.length - 1; index += 1) {
+    const start = path[index];
+    const end = path[index + 1];
+    const startX = (start[1] - point.lng) * longitudeScale;
+    const startY = (start[0] - point.lat) * latitudeScale;
+    const endX = (end[1] - point.lng) * longitudeScale;
+    const endY = (end[0] - point.lat) * latitudeScale;
+    const dx = endX - startX;
+    const dy = endY - startY;
+    const segmentLengthSquared = dx * dx + dy * dy;
+    const projection = segmentLengthSquared === 0
+      ? 0
+      : Math.max(0, Math.min(1, -(startX * dx + startY * dy) / segmentLengthSquared));
+    const closestX = startX + projection * dx;
+    const closestY = startY + projection * dy;
+    minimumDistance = Math.min(minimumDistance, Math.hypot(closestX, closestY));
+  }
+
+  return minimumDistance;
+}
+
 /**
  * Finds closest segment index on path for current rider position
  * and returns passed points and remaining points.

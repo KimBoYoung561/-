@@ -41,6 +41,11 @@
   background: #F8FAFC !important;
 }
 
+/* Keep the complete app surface visible in the preview viewport. */
+.app-scale {
+  zoom: 0.85;
+}
+
 .custom-bike-marker {
   background: transparent;
   border: none;
