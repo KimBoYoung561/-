@@ -772,6 +772,10 @@ export default function App() {
   const [reportCoordinates, setReportCoordinates] = useState<{ lat: number; lng: number } | undefined>();
   const [routeWarning, setRouteWarning] = useState<CommunityReport | null>(null);
   const [warningRouteKey, setWarningRouteKey] = useState<string | null>(null);
+  const [activeRouteEndpoints, setActiveRouteEndpoints] = useState<{
+    origin: { lat: number; lng: number };
+    destination: { lat: number; lng: number };
+  } | null>(null);
   const lastTriggeredReportIdRef = useRef<string | null>(null);
 
   const handleAddReport = (newRep: CommunityReport) => {
@@ -814,45 +818,27 @@ export default function App() {
     }
   };
 
-  const createLocalDetourPath = (path: [number, number][], report: CommunityReport, side: 1 | -1): [number, number][] => {
-    if (!report.coordinates || path.length < 4) return path;
-    let closestIndex = 1;
-    let closestDistance = Infinity;
-    for (let index = 1; index < path.length - 1; index += 1) {
-      const distance = getPointToPolylineDistanceMeters(report.coordinates, [path[index - 1], path[index], path[index + 1]]);
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestIndex = index;
-      }
-    }
-
-    const before = path[closestIndex - 1];
-    const after = path[closestIndex + 1];
-    const directionLat = after[0] - before[0];
-    const directionLng = after[1] - before[1];
-    const length = Math.hypot(directionLat, directionLng) || 1;
-    const offset = 0.00075 * side;
-    const bypassBefore: [number, number] = [before[0] - (directionLng / length) * offset, before[1] + (directionLat / length) * offset];
-    const bypassAfter: [number, number] = [after[0] - (directionLng / length) * offset, after[1] + (directionLat / length) * offset];
-
-    return [...path.slice(0, closestIndex - 1), before, bypassBefore, bypassAfter, after, ...path.slice(closestIndex + 2)];
-  };
-
   const rerouteAroundReport = (report: CommunityReport) => {
-    if (!report.coordinates) return;
+    if (!report.coordinates || !activeRouteEndpoints) return;
     setRouteWarning(null);
-    const firstPath = createLocalDetourPath(selectedCourse.path, report, 1);
-    const secondPath = createLocalDetourPath(selectedCourse.path, report, -1);
-    const reroutedPath = getPointToPolylineDistanceMeters(report.coordinates, firstPath) >= getPointToPolylineDistanceMeters(report.coordinates, secondPath)
-      ? firstPath
-      : secondPath;
-    setSelectedCourse((previous) => ({
-      ...previous,
-      path: reroutedPath,
-      description: `${previous.description} ${report.categoryName} 제보 구간만 피해 재탐색한 우회 경로입니다.`,
-    }));
-    setRemainingPath(reroutedPath);
-    setPassedPath([]);
+    Promise.all([
+      fetchCustomOptimalRouteAsync(selectedCourse.startPoint, activeRouteEndpoints.origin, destination, activeRouteEndpoints.destination, routeType, activeFilter, report.coordinates, 1),
+      fetchCustomOptimalRouteAsync(selectedCourse.startPoint, activeRouteEndpoints.origin, destination, activeRouteEndpoints.destination, routeType, activeFilter, report.coordinates, -1),
+    ])
+      .then(([firstRoute, secondRoute]) => {
+        const firstDistance = getPointToPolylineDistanceMeters(report.coordinates!, firstRoute.path);
+        const secondDistance = getPointToPolylineDistanceMeters(report.coordinates!, secondRoute.path);
+        return firstDistance >= secondDistance ? firstRoute : secondRoute;
+      })
+      .then((reroutedCourse) => {
+        setSelectedCourse({
+          ...reroutedCourse,
+          description: `${reroutedCourse.description} ${report.categoryName} 제보 구간을 피해 실제 자전거도로로 재탐색한 경로입니다.`,
+        });
+        setRemainingPath(reroutedCourse.path);
+        setPassedPath([]);
+      })
+      .catch((error) => console.warn('Report avoidance route failed:', error));
   };
 
   const handleToggleLikeReport = (id: string) => {
@@ -1195,6 +1181,7 @@ export default function App() {
     const startCoords = params.originCoords || riderPosition || ANYANG_CENTER;
     const resolvedDestCoords = params.destinationCoords || await geocodeFacilityLocation('', params.destination);
     const destCoords = resolvedDestCoords || { lat: 37.3943, lng: 126.9568 };
+    setActiveRouteEndpoints({ origin: startCoords, destination: destCoords });
 
     if (params.originCoords) {
       setRiderPosition(params.originCoords);
