@@ -35,7 +35,7 @@ jobs:
           KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
           TARGET_FILE: ${{ inputs.target_file }}
           GEOCODE_MODE: ${{ inputs.mode }}
-        run: node script/geocode-restrooms.mjs
+        run: node scripts/geocode-restrooms.mjs
 
       - name: 변경사항 커밋 & 푸시
         env:
