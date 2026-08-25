@@ -1,6 +1,4 @@
 import { Facility } from '../types';
-import { IMPORTED_FACILITIES } from './importedFacilities';
-import { OFFICIAL_OPEN_RESTROOMS } from './officialOpenRestrooms';
 
 export const ANYANG_FACILITIES: Facility[] = [
   // 🚻 ─── 안양시 공중화장실 (Anyang Restroom Dataset) ───
@@ -9066,8 +9064,7 @@ export const ANYANG_FACILITIES: Facility[] = [
     openHours: '24시간 개방',
     managementAgency: '안양시 동안구',
   },
-];
-
+  
   // ☕ ─── 편의점 / 라이더 카페 (Convenience & Cafes) ───
   {
     id: 'fac-c1',
@@ -9101,9 +9098,3 @@ export const ANYANG_FACILITIES: Facility[] = [
   },
 ];
 
-// CSV records are authoritative for these categories; avoid counting the older summaries twice.
-export const ANYANG_FACILITIES: Facility[] = [
-  ...CURATED_FACILITIES.filter((facility) => facility.category !== 'restroom' && facility.category !== 'parking'),
-  ...IMPORTED_FACILITIES,
-  ...OFFICIAL_OPEN_RESTROOMS,
-];
