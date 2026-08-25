@@ -43,7 +43,7 @@ function getVisualMarkerPosition(facility: Facility, facilities: Facility[]) {
 
   const occurrence = sameLocation.indexOf(facility);
   const angle = (occurrence / sameLocation.length) * Math.PI * 2;
-  const radius = 0.000045;
+  const radius = 0.0003;
   return {
     lat: facility.lat + Math.sin(angle) * radius,
     lng: facility.lng + Math.cos(angle) * radius,
