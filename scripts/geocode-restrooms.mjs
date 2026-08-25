@@ -74,6 +74,24 @@ function unquote(jsLiteral) {
   return jsLiteral.slice(1, -1).replace(/\\'/g, "'").replace(/\\\\/g, '\\');
 }
 
+// "안양역 1번출구 앞(메타볼쪽)" -> "안양역 1번출구 앞" 처럼 괄호 설명 제거.
+// 괄호 안 내용은 실제 장소 이름이 아닌 경우가 많아 검색을 방해함.
+function stripParens(s) {
+  return s.replace(/[（(][^)）]*[)）]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+// "안양역 1번출구 앞" -> "안양역 1번출구" 처럼 끝에 붙은 위치 설명 단어 제거.
+// 이런 단어는 장소 이름이 아니라 "그 근처"라는 뜻이라 검색을 방해함.
+const TRAILING_WORDS = ['앞', '뒤', '옆', '위', '밑', '아래', '안', '내', '건너편', '입구', '근처', '주변', '쪽'];
+function stripTrailingWord(s) {
+  for (const w of TRAILING_WORDS) {
+    if (s.endsWith(w) && s.length > w.length) {
+      return s.slice(0, -w.length).trim();
+    }
+  }
+  return s;
+}
+
 async function main() {
   console.log(`모드: ${MODE} (${MODE === 'keyword' ? '장소 이름 검색' : '정식 주소 검색'})`);
   const src = fs.readFileSync(TARGET_FILE, 'utf8');
@@ -85,6 +103,7 @@ async function main() {
   let notFound = [];
   let done = 0;
   let skipped = 0;
+  let approxCount = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -112,18 +131,44 @@ async function main() {
       }
 
       let coords = null;
+      let approximate = false;
       try {
-        // 키워드 모드: 짧은 검색어(동+이름)부터 시도하고, 안 되면 이름만,
-        // 그래도 안 되면 전체 주소+이름 순서로 점점 넓혀가며 재시도
-        coords = await geocode(candidate);
-        if (!coords && MODE === 'keyword' && nameValue && nameValue !== candidate) {
-          coords = await geocode(nameValue);
-        }
-        if (!coords && MODE === 'keyword' && nameValue && address) {
-          coords = await geocode(`${address} ${nameValue}`);
-        }
-        if (!coords && MODE === 'address' && addressValue && addressValue !== address) {
-          coords = await geocode(addressValue);
+        if (MODE === 'keyword') {
+          const cleanName = nameValue ? stripParens(nameValue) : nameValue;
+          let shortName = cleanName;
+          while (shortName) {
+            const next = stripTrailingWord(shortName);
+            if (next === shortName) break;
+            shortName = next;
+          }
+          // 점점 넓혀가며 재시도:
+          // 동+이름(괄호/위치단어 제거) -> 이름만(괄호/위치단어 제거) -> 동+이름(괄호만 제거)
+          // -> 이름만(괄호만 제거) -> 동+원본이름 -> 전체주소+이름
+          const tries = [
+            shortName ? `${dong} ${shortName}`.trim() : null,
+            shortName,
+            cleanName ? `${dong} ${cleanName}`.trim() : null,
+            cleanName,
+            candidate,
+            address && nameValue ? `${address} ${nameValue}` : null,
+          ].filter((q, idx, arr) => q && arr.indexOf(q) === idx);
+
+          for (const q of tries) {
+            coords = await geocode(q);
+            if (coords) break;
+            await sleep(80);
+          }
+
+          // 그래도 못 찾으면 최후 수단: 동 이름만 정식 주소 검색해서 동네 중심 좌표라도 확보
+          if (!coords && address) {
+            coords = await geocodeAddress(address);
+            if (coords) approximate = true;
+          }
+        } else {
+          coords = await geocode(candidate);
+          if (!coords && addressValue && addressValue !== address) {
+            coords = await geocode(addressValue);
+          }
         }
       } catch (err) {
         console.error(`  ! ${candidate} -> ${err.message}`);
@@ -132,6 +177,7 @@ async function main() {
       if (coords) {
         out.push(`    lat: ${coords.lat},`);
         out.push(`    lng: ${coords.lng},`);
+        if (approximate) approxCount++;
       } else {
         notFound.push(candidate);
         console.warn(`  ? 좌표 못 찾음: ${candidate}`);
@@ -145,7 +191,10 @@ async function main() {
   }
 
   fs.writeFileSync(TARGET_FILE, out.join('\n'));
-  console.log(`완료: ${done}건 신규 처리, ${skipped}건 이미 좌표 있어 건너뜀, 좌표 실패 ${notFound.length}건`);
+  console.log(
+    `완료: ${done}건 신규 처리(그중 ${approxCount}건은 동네 중심 좌표로 대체), ` +
+      `${skipped}건 이미 좌표 있어 건너뜀, 좌표 실패 ${notFound.length}건`
+  );
   if (notFound.length) {
     console.log('실패한 항목 목록:');
     notFound.forEach((a) => console.log(`  - ${a}`));
