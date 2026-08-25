@@ -7,6 +7,10 @@
 //   TARGET_FILE=data/facilities.ts KAKAO_REST_API_KEY=발급받은키 node scripts/geocode-restrooms.mjs
 //   (TARGET_FILE 생략 시 기본값 data/restrooms.ts)
 //
+// GEOCODE_MODE=keyword 로 실행하면 정식 주소가 아니라 "안양역 2번출구 앞" 같은
+// 장소 이름으로 검색하는 카카오 키워드 검색 API를 사용함 (자전거 보관소/공기주입기처럼
+// address 필드에 정식 주소가 없고 동 이름 정도만 있는 데이터용). 기본값은 'address'.
+//
 // 카카오 개발자센터(https://developers.kakao.com) > 애플리케이션 > 앱 키 > REST API 키
 
 import fs from 'node:fs';
@@ -18,6 +22,12 @@ const TARGET_FILE = process.env.TARGET_FILE
   ? path.resolve(process.cwd(), process.env.TARGET_FILE)
   : path.join(__dirname, '..', 'data', 'restrooms.ts');
 
+const MODE = process.env.GEOCODE_MODE === 'keyword' ? 'keyword' : 'address';
+
+// 안양시 중심 좌표. 키워드 검색 시 이 좌표 주변을 우선해서 동명이인(같은 이름의
+// 다른 지역 장소)에 걸리지 않도록 함.
+const ANYANG_CENTER = { x: 126.9568, y: 37.3943 };
+
 const KAKAO_KEY = process.env.KAKAO_REST_API_KEY;
 if (!KAKAO_KEY) {
   console.error('환경변수 KAKAO_REST_API_KEY 를 설정한 뒤 다시 실행하세요.');
@@ -26,7 +36,7 @@ if (!KAKAO_KEY) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function geocode(address) {
+async function geocodeAddress(address) {
   const url = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(address)}`;
   const res = await fetch(url, {
     headers: { Authorization: `KakaoAK ${KAKAO_KEY}` },
@@ -40,15 +50,37 @@ async function geocode(address) {
   return { lat: parseFloat(doc.y), lng: parseFloat(doc.x) };
 }
 
+async function geocodeKeyword(query) {
+  const url =
+    `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}` +
+    `&x=${ANYANG_CENTER.x}&y=${ANYANG_CENTER.y}&radius=20000&sort=distance`;
+  const res = await fetch(url, {
+    headers: { Authorization: `KakaoAK ${KAKAO_KEY}` },
+  });
+  if (!res.ok) {
+    throw new Error(`Kakao API ${res.status} (${query})`);
+  }
+  const data = await res.json();
+  const doc = data.documents?.[0];
+  if (!doc) return null;
+  return { lat: parseFloat(doc.y), lng: parseFloat(doc.x) };
+}
+
+function geocode(query) {
+  return MODE === 'keyword' ? geocodeKeyword(query) : geocodeAddress(query);
+}
+
 function unquote(jsLiteral) {
   return jsLiteral.slice(1, -1).replace(/\\'/g, "'").replace(/\\\\/g, '\\');
 }
 
 async function main() {
+  console.log(`모드: ${MODE} (${MODE === 'keyword' ? '장소 이름 검색' : '정식 주소 검색'})`);
   const src = fs.readFileSync(TARGET_FILE, 'utf8');
   const lines = src.split('\n');
 
   const out = [];
+  let nameValue = null;
   let addressValue = null;
   let notFound = [];
   let done = 0;
@@ -58,13 +90,19 @@ async function main() {
     const line = lines[i];
     out.push(line);
 
+    const nameMatch = line.match(/^\s*name: '((?:\\.|[^'\\])*)',\s*$/);
+    if (nameMatch) nameValue = unquote(`'${nameMatch[1]}'`);
+
     const addressMatch = line.match(/^\s*address: '((?:\\.|[^'\\])*)',\s*$/);
     if (addressMatch) addressValue = unquote(`'${addressMatch[1]}'`);
 
     const roadMatch = line.match(/^\s*roadAddress: '((?:\\.|[^'\\])*)',\s*$/);
     if (roadMatch) {
       const roadAddressValue = unquote(`'${roadMatch[1]}'`);
-      const candidate = roadAddressValue || addressValue;
+      const address = roadAddressValue || addressValue;
+      const dong = (address || '').trim().split(/\s+/).pop() || ''; // 주소 마지막 토큰 (동 이름)
+      const candidate =
+        MODE === 'keyword' && nameValue ? `${dong} ${nameValue}`.trim() : address;
 
       const nextLine = lines[i + 1] || '';
       const alreadyHasCoords = /^\s*lat:\s*-?\d/.test(nextLine);
@@ -73,11 +111,16 @@ async function main() {
         continue; // 이미 좌표가 있는 항목은 그대로 둠
       }
 
-          let coords = null;
+      let coords = null;
       try {
+        // 키워드 모드: 짧은 검색어(동+이름)부터 시도하고, 안 되면 이름만,
+        // 그래도 안 되면 전체 주소+이름 순서로 점점 넓혀가며 재시도
         coords = await geocode(candidate);
-        if (!coords && MODE === 'keyword' && nameValue) {
-          coords = await geocode(nameValue); // 지역명 붙인 검색 실패 시 이름만으로 재시도
+        if (!coords && MODE === 'keyword' && nameValue && nameValue !== candidate) {
+          coords = await geocode(nameValue);
+        }
+        if (!coords && MODE === 'keyword' && nameValue && address) {
+          coords = await geocode(`${address} ${nameValue}`);
         }
         if (!coords && MODE === 'address' && addressValue && addressValue !== address) {
           coords = await geocode(addressValue);
