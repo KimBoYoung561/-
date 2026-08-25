@@ -8,13 +8,14 @@ on:
         required: true
         default: 'data/restrooms.ts'
       mode:
-        description: '검색 방식: address(정식 주소) / keyword(장소 이름만 있음) / dedupe(겹친 좌표 흩어놓기, API 불필요)'
+        description: '검색 방식: address(정식 주소) / keyword(장소 이름만 있음) / refix(중복 좌표만 재검색) / dedupe(겹친 좌표 흩어놓기, API 불필요)'
         required: true
         default: 'address'
         type: choice
         options:
           - address
           - keyword
+          - refix
           - dedupe
 
 jobs:
