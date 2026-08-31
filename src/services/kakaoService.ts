@@ -76,6 +76,26 @@ export interface Coordinates {
   lng: number;
 }
 
+export interface FacilityLocationSearch {
+  original: string;
+  searchKeyword: string;
+  detail: string;
+}
+
+/** Separates searchable landmarks from installation-specific positional details. */
+export function refineFacilitySearchKeyword(original: string): FacilityLocationSearch {
+  const normalized = original.replace(/\s+/g, ' ').trim();
+  const withoutDistrictPrefix = normalized.replace(/^안양시\s+/, '');
+  const detailPattern = /\s+(정문|후문|앞|옆|부근|입구|내|일원|하천진입로|육교아래|보도|맞은편)(.*)$/;
+  const match = withoutDistrictPrefix.match(detailPattern);
+  const detail = match ? `${match[1]}${match[2] || ''}`.trim() : '';
+  const searchKeyword = (match ? withoutDistrictPrefix.slice(0, match.index) : withoutDistrictPrefix)
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/(\d+)\s*번\s*출구/g, '$1번출구');
+  return { original: normalized, searchKeyword, detail };
+}
+
 function normalizeGeocodingText(value: string): string {
   return value
     .replace(/\uFEFF/g, '')

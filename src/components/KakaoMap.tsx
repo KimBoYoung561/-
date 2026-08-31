@@ -83,6 +83,7 @@ export default function KakaoMap({
   const kakaoEndOverlayRef = useRef<any>(null);
   const kakaoRiderOverlayRef = useRef<any>(null);
   const kakaoPoiOverlaysRef = useRef<any[]>([]);
+  const kakaoPoiInfoWindowsRef = useRef<any[]>([]);
   const kakaoPoiMarkersRef = useRef<any[]>([]);
   const kakaoPoiClustererRef = useRef<any>(null);
   const kakaoReportMarkersRef = useRef<any[]>([]);
@@ -105,7 +106,7 @@ export default function KakaoMap({
 
   // Engine state: 'kakao' | 'leaflet'
   const [engine, setEngine] = useState<'kakao' | 'leaflet' | null>(null);
-  const [isBicycleLayerActive, setIsBicycleLayerActive] = useState<boolean>(true);
+  const [isBicycleOverlayOn, setIsBicycleOverlayOn] = useState<boolean>(true);
   const [isLayerMenuOpen, setIsLayerMenuOpen] = useState(false);
 
   // 사용자 수동 지도 조작(드래그) 상태 관리
@@ -145,7 +146,7 @@ export default function KakaoMap({
           const map = new kakao.maps.Map(containerRef.current, options);
           kakaoMapRef.current = map;
 
-          // Activate Kakao Bicycle Layer
+          // Enable the bicycle road layer immediately after map creation.
           map.addOverlayMapTypeId(kakao.maps.MapTypeId.BICYCLE);
 
           kakao.maps.event.addListener(map, 'click', (mouseEvent: any) => {
@@ -199,6 +200,19 @@ export default function KakaoMap({
     };
   }, []);
 
+  // Keep the actual Kakao overlay synchronized with the React state.
+  useEffect(() => {
+    if (engine !== 'kakao' || !kakaoMapRef.current) return;
+
+    const kakao = (window as any).kakao;
+    const map = kakaoMapRef.current;
+    if (isBicycleOverlayOn) {
+      map.addOverlayMapTypeId(kakao.maps.MapTypeId.BICYCLE);
+    } else {
+      map.removeOverlayMapTypeId(kakao.maps.MapTypeId.BICYCLE);
+    }
+  }, [engine, isBicycleOverlayOn]);
+
   // 2. DOM 레벨의 정확한 사용자 드래그 제스처 감지 (프로그래밍적 panTo와 구분)
   const handlePointerDown = (e: PointerEvent) => {
     isPointerDownRef.current = true;
@@ -225,20 +239,8 @@ export default function KakaoMap({
 
   // 3. Toggle Kakao Bicycle Layer
   const toggleBicycleLayer = useCallback(() => {
-    if (engine === 'kakao' && kakaoMapRef.current) {
-      const kakao = (window as any).kakao;
-      const map = kakaoMapRef.current;
-      if (isBicycleLayerActive) {
-        map.removeOverlayMapTypeId(kakao.maps.MapTypeId.BICYCLE);
-        setIsBicycleLayerActive(false);
-      } else {
-        map.addOverlayMapTypeId(kakao.maps.MapTypeId.BICYCLE);
-        setIsBicycleLayerActive(true);
-      }
-    } else {
-      setIsBicycleLayerActive(!isBicycleLayerActive);
-    }
-  }, [engine, isBicycleLayerActive]);
+    setIsBicycleOverlayOn((isOn) => !isOn);
+  }, []);
 
   // 4. Render Route Polylines (지나온 길 회색, 앞으로 갈 길 진한 파란색)
   useEffect(() => {
@@ -431,6 +433,8 @@ export default function KakaoMap({
 
       kakaoPoiOverlaysRef.current.forEach((overlay) => overlay.setMap(null));
       kakaoPoiOverlaysRef.current = [];
+      kakaoPoiInfoWindowsRef.current.forEach((infoWindow) => infoWindow.close());
+      kakaoPoiInfoWindowsRef.current = [];
       kakaoPoiClustererRef.current?.clear();
       kakaoPoiClustererRef.current = null;
       kakaoPoiMarkersRef.current.forEach((marker) => marker.setMap(null));
@@ -460,7 +464,17 @@ export default function KakaoMap({
           title: fac.name,
           zIndex: isHighlighted ? 40 : 20,
         });
-        kakao.maps.event.addListener(marker, 'click', () => onSelectFacility?.(fac));
+        kakao.maps.event.addListener(marker, 'click', () => {
+          const original = fac.original || fac.name;
+          const detail = fac.detail ? `<div style="margin-top:4px;color:#475569;">상세 안내: ${fac.detail}</div>` : '';
+          const infoWindow = new kakao.maps.InfoWindow({
+            content: `<div style="padding:10px 12px;font-size:12px;line-height:1.5;max-width:240px;"><strong>${original}</strong>${detail}</div>`,
+            removable: true,
+          });
+          infoWindow.open(map, marker);
+          kakaoPoiInfoWindowsRef.current.push(infoWindow);
+          onSelectFacility?.(fac);
+        });
         markers.push(marker);
 
         if (isHighlighted) {
@@ -522,6 +536,10 @@ export default function KakaoMap({
 
         const icon = L.divIcon({ className: 'custom-bike-marker', html: poiHtml, iconSize: [80, 40], iconAnchor: [40, 13] });
         const marker = L.marker([markerPosition.lat, markerPosition.lng], { icon, zIndexOffset: isHighlighted ? 40 : 20 });
+        marker.bindTooltip(
+          `<strong>${fac.original || fac.name}</strong>${fac.detail ? `<br><span>상세 안내: ${fac.detail}</span>` : ''}`,
+          { direction: 'top', offset: [0, -12] },
+        );
         marker.on('click', () => {
           if (onSelectFacility) onSelectFacility(fac);
         });
@@ -834,7 +852,7 @@ export default function KakaoMap({
             type="button"
             onClick={() => setIsLayerMenuOpen(!isLayerMenuOpen)}
             className={`flex h-10 w-10 items-center justify-center rounded-xl border shadow-md backdrop-blur-xl active:scale-95 transition-all ${
-              isBicycleLayerActive
+              isBicycleOverlayOn
                 ? 'bg-[#0055FF] text-white border-[#0055FF]'
                 : 'bg-white/95 text-slate-700 border-slate-200 hover:text-slate-900'
             }`}
@@ -907,11 +925,21 @@ export default function KakaoMap({
             </div>
             <div
               className={`w-5 h-5 rounded-md flex items-center justify-center border transition-colors ${
-                isBicycleLayerActive ? 'bg-[#0055FF] border-[#0055FF] text-white' : 'border-slate-300 bg-white'
+                isBicycleOverlayOn ? 'bg-[#0055FF] border-[#0055FF] text-white' : 'border-slate-300 bg-white'
               }`}
             >
-              {isBicycleLayerActive && <Check size={13} strokeWidth={3} />}
+              {isBicycleOverlayOn && <Check size={13} strokeWidth={3} />}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Simple destination guidance for the bicycle-road layer. */}
+      {!isRiding && (routePath?.length || highlightFacilityId) && (
+        <div className="absolute bottom-4 left-3 right-3 z-20 pointer-events-none sm:left-1/2 sm:right-auto sm:w-[min(90%,420px)] sm:-translate-x-1/2">
+          <div className="flex items-center gap-2 rounded-2xl border border-blue-200 bg-white/95 px-3.5 py-3 text-xs font-bold text-slate-700 shadow-xl backdrop-blur-xl">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-base">🚲</span>
+            <span>자전거 전용 도로(분홍/파란선)를 따라 안전하게 이동하세요</span>
           </div>
         </div>
       )}

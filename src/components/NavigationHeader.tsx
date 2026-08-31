@@ -10,7 +10,6 @@ import {
   VolumeX,
   X,
   Compass,
-  Zap,
   ShieldAlert,
 } from 'lucide-react';
 import { NavStep } from '../types';
@@ -21,7 +20,6 @@ interface NavigationHeaderProps {
   distanceToNextStepMeter: number;
   totalRemainingDistanceKm: number;
   remainingMinutes: number;
-  currentSpeedKmh: number;
   voiceEnabled: boolean;
   onToggleVoice: () => void;
   onStopRide: () => void;
@@ -37,7 +35,6 @@ export default function NavigationHeader({
   distanceToNextStepMeter,
   totalRemainingDistanceKm,
   remainingMinutes,
-  currentSpeedKmh,
   voiceEnabled,
   onToggleVoice,
   onStopRide,
@@ -204,7 +201,7 @@ export default function NavigationHeader({
           </div>
         </div>
 
-        {/* ── Bottom Strip: 2nd Turn Preview & Remaining Distance/Time/Speed ── */}
+        {/* ── Bottom Strip: 2nd Turn Preview & Remaining Distance/Time ── */}
         <div className="px-3.5 py-2 bg-slate-950/70 border-t border-slate-800 flex items-center justify-between text-xs">
           {/* Next 2nd step preview */}
           {nextStep ? (
@@ -225,7 +222,7 @@ export default function NavigationHeader({
             </div>
           )}
 
-          {/* Quick Metrics (Remaining km, time, current speed) */}
+          {/* Quick Metrics (Remaining km, time) */}
           <div className="flex items-center gap-2 shrink-0 text-[11px] font-extrabold pl-2 border-l border-slate-800">
             <span className="text-blue-400">
               {totalRemainingDistanceKm.toFixed(1)}km
@@ -233,11 +230,6 @@ export default function NavigationHeader({
             <span className="text-slate-500">·</span>
             <span className="text-amber-400">
               {remainingMinutes}분
-            </span>
-            <span className="text-slate-500">·</span>
-            <span className="text-emerald-400 flex items-center gap-0.5">
-              <Zap size={10} fill="currentColor" />
-              {currentSpeedKmh}km/h
             </span>
           </div>
         </div>

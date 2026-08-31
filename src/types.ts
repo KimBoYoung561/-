@@ -86,6 +86,9 @@ export interface Facility {
   roadAddress?: string;
   lat: number;
   lng: number;
+  original?: string;
+  searchKeyword?: string;
+  detail?: string;
   description: string;
   availableItems?: string[];
   distance?: string;

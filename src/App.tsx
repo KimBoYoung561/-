@@ -24,6 +24,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Flag,
+  MapPin,
 } from 'lucide-react';
 
 import {
@@ -54,16 +55,16 @@ import {
   getCurrentTimeString,
   getCalculatedArrivalTime,
 } from './utils/routeUtils';
-import { coordToAddress, geocodeFacilityLocation, Coordinates } from './services/kakaoService';
+import { coordToAddress, geocodeFacilityLocation, refineFacilitySearchKeyword, Coordinates } from './services/kakaoService';
 import { getBearing, getPointToPolylineDistanceMeters } from './utils/navigationMath';
 import MapComponent from './components/MapComponent';
 import NavigationHeader from './components/NavigationHeader';
 import NavigationInfoSheet from './components/NavigationInfoSheet';
-import SearchModal from './components/SearchModal';
 import QuickReportModal from './components/QuickReportModal';
 import RideSummaryModal from './components/RideSummaryModal';
 import DepartureTimeModal from './components/DepartureTimeModal';
 import FacilityDetailModal from './components/FacilityDetailModal';
+import { fetchKmaWeather, type WeatherSummary } from './services/weatherService';
 import OfficialBicycleMapModal from './components/OfficialBicycleMapModal';
 import AllCoursesModal from './components/AllCoursesModal';
 import RecordTab from './components/RecordTab';
@@ -261,7 +262,7 @@ function BottomNav({
 }) {
   const items: Array<{ id: TabType; icon: any; label: string }> = [
     { id: 'record', icon: Compass, label: '주행기록' },
-    { id: 'home', icon: PenLine, label: '길찾기' },
+    { id: 'home', icon: PenLine, label: '메인' },
     { id: 'facilities', icon: Mail, label: '편의시설' },
     { id: 'profile', icon: User, label: '내 설정' },
   ];
@@ -292,138 +293,90 @@ function BottomNav({
   );
 }
 
-function IdleSheet({
+function HomeSummarySheet({
   origin,
-  destination,
-  onSelectCourse,
-  onStartRideDirect,
-  onOpenAllCourses,
+  weather,
   onOpenOfficialGuide,
 }: {
   origin: string;
-  destination: string;
-  onSelectCourse: (tag: FilterCategory) => void;
-  onStartRideDirect: () => void;
-  onOpenAllCourses: () => void;
+  weather: WeatherSummary | null;
   onOpenOfficialGuide: () => void;
 }) {
   return (
-    <div className="px-4 pb-4 pt-2 text-slate-900">
-      {/* Official Map Highlight Banner */}
-      <div
-        onClick={onOpenOfficialGuide}
-        className="mb-3 flex items-center justify-between rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50 to-emerald-50 border border-blue-200 p-3 shadow-sm cursor-pointer hover:border-blue-300 active:scale-[0.99] transition-all min-h-[48px]"
-      >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#0055FF] text-white shadow-md">
-            <BookOpen size={16} />
+    <div className="px-4 pb-5 pt-2 text-slate-900">
+      <div className="mb-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="mb-2 flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500">
+            <MapPin size={12} className="text-[#0055FF]" />
+            현재 위치
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[9px] font-bold text-[#0055FF]">
-                안양시 공식
-              </span>
-              <span className="text-xs font-bold text-slate-900 truncate">5대 하천길 & 시민 자전거보험</span>
-            </div>
-            <p className="text-[11px] text-slate-600 truncate mt-0.5">안양천·학의천·삼성천·수암천·삼막천 / 무료 정비소</p>
-          </div>
+          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-700">
+            실시간
+          </span>
         </div>
-        <ChevronRight size={16} className="text-slate-400 shrink-0" />
+        <p className="text-lg font-black text-slate-900">{origin || '성동구 응봉동'}</p>
+        <p className="mt-1 text-[11px] text-slate-500">풍속/풍향 · 미세먼지 · 자외선까지 한 번에 확인</p>
       </div>
 
-      <div className="mb-2 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <Sparkles size={14} className="text-[#0055FF]" />
-          <p className="text-xs font-bold text-slate-900">안양시 추천 자전거 테마 코스</p>
+      <div className="mb-3 grid grid-cols-4 gap-2">
+        {[
+          { label: '풍속', value: weather?.windSpeedMps != null ? `${weather.windSpeedMps.toFixed(1)}m/s` : '—', icon: '💨', tone: 'bg-sky-50 text-sky-700 border-sky-200' },
+          { label: '풍향', value: weather?.windDirection || '—', icon: '🧭', tone: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+          { label: '미세먼지', value: weather?.airQualityLabel || '—', icon: '🌫️', tone: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+          { label: '자외선', value: weather?.uvLabel || '—', icon: '☀️', tone: 'bg-amber-50 text-amber-700 border-amber-200' },
+        ].map((item) => (
+          <div key={item.label} className={`rounded-2xl border p-2 text-center ${item.tone}`}>
+            <div className="text-lg leading-none">{item.icon}</div>
+            <div className="mt-1 text-[9px] font-bold">{item.label}</div>
+            <div className="mt-0.5 text-[11px] font-black">{item.value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mb-3 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 via-cyan-50 to-emerald-50 p-3.5 shadow-sm">
+        <div className="mb-2 flex items-center gap-1.5 text-[11px] font-black text-[#0055FF]">
+          <Sparkles size={13} />
+          AI 요약
         </div>
-        <button
-          type="button"
-          onClick={onOpenAllCourses}
-          className="text-xs font-bold text-[#0055FF] bg-blue-50 border border-blue-200 hover:bg-blue-100 active:bg-blue-200 px-2.5 py-1 rounded-xl flex items-center gap-1 min-h-[32px] transition-colors"
-        >
-          <span>추천 코스 더보기</span>
-          <ChevronRight size={13} />
-        </button>
+        <p className="text-sm leading-6 text-slate-800">
+          {weather?.summary || '현재 날씨 정보를 불러오고 있습니다.'}
+        </p>
       </div>
 
-      {/* Recommended Courses List (Quick 1-Tap select) */}
-      <div className="space-y-2 mb-3.5 max-h-52 overflow-y-auto hide-scrollbar">
-        {/* Course 1 (Top Recommended) */}
+      <div className="space-y-2">
         <button
           type="button"
-          onClick={() => onSelectCourse('추천 코스')}
-          className="flex w-full items-center gap-3 rounded-2xl bg-blue-50/80 p-3 min-h-[48px] text-left border border-blue-200 hover:border-blue-400 hover:bg-blue-50 active:scale-[0.99] transition-all shadow-sm"
+          className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm hover:bg-slate-50 active:scale-[0.99] transition-all"
         >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0055FF] text-white shadow-sm font-bold text-xs">
-            1위
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <p className="font-bold text-slate-900 text-xs truncate">안양천-학의천 쌍개울 순환로</p>
-              <span className="rounded bg-emerald-100 border border-emerald-300 px-1.5 py-0.2 text-[9px] font-bold text-emerald-800 shrink-0">
-                전용로 92%
-              </span>
-              <span className="rounded bg-amber-100 border border-amber-300 px-1.5 py-0.2 text-[9px] font-bold text-amber-800 shrink-0">
-                경치 우수
-              </span>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0055FF] text-white shadow-sm">
+              <Navigation size={16} fill="currentColor" />
             </div>
-            <p className="text-[11px] text-slate-600 mt-0.5">5.8km · 25분 소요 · 평지 위주 수변 라이딩</p>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-900">안양시 가기 좋은 장소 추천</p>
+              <p className="mt-0.5 text-[11px] text-slate-600 truncate">안양천 힐링코스</p>
+            </div>
           </div>
           <ChevronRight size={16} className="text-slate-400 shrink-0" />
         </button>
 
-        {/* Course 2 */}
         <button
           type="button"
-          onClick={() => onSelectCourse('평지 중심')}
-          className="flex w-full items-center gap-3 rounded-2xl bg-white p-3 min-h-[48px] text-left border border-slate-200 hover:border-blue-300 active:bg-slate-100 transition-all shadow-sm"
+          onClick={onOpenOfficialGuide}
+          className="flex w-full items-center justify-between rounded-2xl border border-blue-200 bg-blue-50/70 p-3 text-left shadow-sm hover:bg-blue-100 active:scale-[0.99] transition-all"
         >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 font-bold text-xs">
-            평지
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <p className="font-bold text-slate-900 text-xs truncate">학의천 평지 쾌속선 (쌍개울~인덕원)</p>
-              <span className="rounded bg-emerald-100 border border-emerald-300 px-1.5 py-0.2 text-[9px] font-bold text-emerald-800 shrink-0">
-                전용로 95%
-              </span>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0055FF] text-white shadow-sm">
+              <BookOpen size={16} />
             </div>
-            <p className="text-[11px] text-slate-600 mt-0.5">4.5km · 20분 소요 · 쾌적한 하천 직통로</p>
-          </div>
-          <ChevronRight size={16} className="text-slate-400 shrink-0" />
-        </button>
-
-        {/* Course 3 */}
-        <button
-          type="button"
-          onClick={() => onSelectCourse('경치 좋은')}
-          className="flex w-full items-center gap-3 rounded-2xl bg-white p-3 min-h-[48px] text-left border border-slate-200 hover:border-blue-300 active:bg-slate-100 transition-all shadow-sm"
-        >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 font-bold text-xs">
-            경치
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <p className="font-bold text-slate-900 text-xs truncate">삼성천 안양예술공원 힐링길</p>
-              <span className="rounded bg-amber-100 border border-amber-300 px-1.5 py-0.2 text-[9px] font-bold text-amber-800 shrink-0">
-                경치 우수 98점
-              </span>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-900">안양시 나들이 지도</p>
+              <p className="mt-0.5 text-[11px] text-slate-700 truncate">GPS 기반 · 안양 8경, 갈만한 곳 추천</p>
             </div>
-            <p className="text-[11px] text-slate-600 mt-0.5">4.2km · 21분 소요 · 예술공원 야외조각 감상</p>
           </div>
-          <ChevronRight size={16} className="text-slate-400 shrink-0" />
+          <ChevronRight size={16} className="text-slate-500 shrink-0" />
         </button>
       </div>
-
-      {/* High-Legibility Primary Action Button */}
-      <button
-        type="button"
-        onClick={onStartRideDirect}
-        className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#0055FF] py-3.5 min-h-[48px] text-sm font-bold text-white shadow-md hover:bg-blue-700 active:scale-[0.98] transition-all"
-      >
-        <Navigation size={16} fill="currentColor" />
-        <span>자전거 안내 시작 (내비게이션)</span>
-      </button>
     </div>
   );
 }
@@ -758,7 +711,6 @@ export default function App() {
   const [activePoiFilters, setActivePoiFilters] = useState<POICategory[]>([]);
 
   // Modals
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isDepartureModalOpen, setIsDepartureModalOpen] = useState(false);
   const [isOfficialGuideOpen, setIsOfficialGuideOpen] = useState(false);
   const [isAllCoursesOpen, setIsAllCoursesOpen] = useState(false);
@@ -776,6 +728,7 @@ export default function App() {
     origin: { lat: number; lng: number };
     destination: { lat: number; lng: number };
   } | null>(null);
+  const [weather, setWeather] = useState<WeatherSummary | null>(null);
   const lastTriggeredReportIdRef = useRef<string | null>(null);
 
   const handleAddReport = (newRep: CommunityReport) => {
@@ -886,7 +839,7 @@ export default function App() {
   // Resolve source addresses to real map coordinates once, then reuse them on later visits.
   useEffect(() => {
     let cancelled = false;
-    const cacheKey = 'anyang-facility-coordinates-v8-restroom-real-address';
+    const cacheKey = 'anyang-facility-coordinates-v9-air-pumps-precise-place-search';
     const targets = ANYANG_FACILITIES.filter(isGeocodedFacility);
     let cached: Record<string, Coordinates> = {};
 
@@ -900,13 +853,22 @@ export default function App() {
       if (cancelled) return;
       setMappedFacilities(ANYANG_FACILITIES.map((facility) => ({
         ...facility,
+        ...(facility.facilityType === '공기주입기'
+          ? (() => {
+              const refined = refineFacilitySearchKeyword(facility.name);
+              return {
+                original: refined.original,
+                searchKeyword: refined.searchKeyword,
+                detail: refined.detail,
+              };
+            })()
+          : {}),
         ...(coordinates[facility.id] || {}),
       })));
     };
 
     applyCoordinates(cached);
-    // v7 intentionally rebuilds restroom coordinates once because older generated
-    // data used dong-level fallback points and caused markers to overlap.
+    // Rebuild coordinates after changing the source dataset or geocoding strategy.
     const pendingFacilities = targets.filter((facility) => !cached[facility.id]);
     if (pendingFacilities.length === 0) return () => { cancelled = true; };
 
@@ -915,9 +877,12 @@ export default function App() {
     const worker = async () => {
       while (nextIndex < pendingFacilities.length && !cancelled) {
         const facility = pendingFacilities[nextIndex++];
+        const refined = facility.facilityType === '공기주입기'
+          ? refineFacilitySearchKeyword(facility.name)
+          : null;
         const address = facility.roadAddress || facility.address;
         const coordinate = await geocodeFacilityLocation(
-          facility.name,
+          refined?.searchKeyword || facility.name,
           address,
           facility.category === 'parking' || facility.facilityType === '공기주입기',
         );
@@ -1033,7 +998,7 @@ export default function App() {
             setOrigin('내 현재 위치');
           }
         },
-        () => {
+        async () => {
           setRiderPosition({
             lat: ANYANG_CENTER.lat,
             lng: ANYANG_CENTER.lng,
@@ -1046,6 +1011,25 @@ export default function App() {
 
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!riderPosition) return;
+
+    let isMounted = true;
+    const loadWeather = async () => {
+      try {
+        const nextWeather = await fetchKmaWeather(riderPosition.lat, riderPosition.lng);
+        if (isMounted) setWeather(nextWeather);
+      } catch {
+        if (isMounted) setWeather(null);
+      }
+    };
+
+    void loadWeather();
+    return () => {
+      isMounted = false;
+    };
+  }, [riderPosition]);
 
   /* Filter Tag Click */
   const handleFilterSelect = (tag: FilterCategory) => {
@@ -1369,7 +1353,6 @@ export default function App() {
               distanceToNextStepMeter={navMetrics.distanceToNextStepMeter}
               totalRemainingDistanceKm={navMetrics.totalRemainingDistanceKm}
               remainingMinutes={navMetrics.remainingMinutes}
-              currentSpeedKmh={navMetrics.currentSpeedKmh}
               voiceEnabled={voiceEnabled}
               onToggleVoice={() => setVoiceEnabled(!voiceEnabled)}
               onStopRide={handleStopRiding}
@@ -1380,68 +1363,28 @@ export default function App() {
             />
           )}
 
-          {/* ── Top Search Floating Bar (Clean, Keyword Chips moved to detail sheet) ── */}
+          {/* ── Top Utility Bar (Current location and quick access only) ── */}
           {appState !== 'riding' && (
             <div className="absolute left-0 right-0 top-0 z-30 px-3 pt-3 pointer-events-none">
-              <div className="pointer-events-auto rounded-2xl bg-white/95 p-2.5 shadow-xl backdrop-blur-xl border border-slate-200">
-                {/* Search Bar / Destination Trigger */}
-                <div className="flex items-center gap-2">
-                  <div
-                    onClick={() => setIsSearchOpen(true)}
-                    className="flex-1 flex items-center justify-between gap-2 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 hover:border-blue-400 hover:bg-blue-50/40 cursor-pointer transition-all shadow-inner group min-h-[44px]"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-[#0055FF] group-hover:scale-105 transition-transform">
-                        <Navigation size={14} fill="currentColor" />
-                      </div>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-[10px] font-bold text-slate-400 leading-tight">
-                          {destination ? '안양시 자전거 최적 경로' : '출발지 ➔ 도착지 검색'}
-                        </span>
-                        <span className="text-xs font-bold text-slate-800 truncate">
-                          {destination ? `${origin.split(' ')[0]} ➔ ${destination}` : '어디로 갈까요? (자전거 길찾기)'}
-                        </span>
-                      </div>
-                    </div>
-                    <span className="shrink-0 rounded-lg bg-[#0055FF] px-2.5 py-1 text-[11px] font-bold text-white shadow-sm group-hover:bg-blue-700 transition-colors">
-                      길찾기
-                    </span>
+              <div className="pointer-events-auto flex items-center justify-between gap-2 rounded-2xl bg-white/95 p-2.5 shadow-xl backdrop-blur-xl border border-slate-200">
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-[#0055FF]">
+                    <Navigation size={14} fill="currentColor" />
                   </div>
-
-                  {/* Quick Report Header Action */}
-                  <button
-                    type="button"
-                    onClick={() => setIsQuickReportOpen(true)}
-                    className="flex flex-col items-center justify-center h-[44px] px-2.5 rounded-xl bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 active:scale-95 transition-all shrink-0"
-                    title="장애물/파손/통제/공사 현장 실시간 신고"
-                  >
-                    <ShieldAlert size={14} className="text-red-600" />
-                    <span className="text-[10px] font-extrabold mt-0.5">신고</span>
-                  </button>
-
-                  {/* Official Guide Quick Trigger */}
-                  <button
-                    type="button"
-                    onClick={() => setIsOfficialGuideOpen(true)}
-                    className="flex flex-col items-center justify-center h-[44px] px-2.5 rounded-xl bg-gradient-to-b from-blue-50 to-indigo-50 border border-blue-200 text-[#0055FF] hover:bg-blue-100 active:scale-95 transition-all shrink-0"
-                    title="안양시 공식 5대 하천길 및 시민 혜택 안내"
-                  >
-                    <Sparkles size={13} className="text-[#0055FF]" />
-                    <span className="text-[10px] font-extrabold mt-0.5">공식지도</span>
-                  </button>
-
-                  {/* Reset Destination Button if active */}
-                  {destination && (
-                    <button
-                      type="button"
-                      onClick={handleCloseRouteSearch}
-                      className="flex h-[44px] w-10 min-w-[40px] items-center justify-center rounded-xl bg-slate-100 border border-slate-200 text-slate-500 hover:text-red-600 hover:bg-red-50 active:scale-95 transition-all shrink-0"
-                      title="검색 초기화"
-                    >
-                      <X size={15} />
-                    </button>
-                  )}
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-bold text-slate-400">현재 위치</div>
+                    <div className="truncate text-xs font-bold text-slate-800">{origin}</div>
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsQuickReportOpen(true)}
+                  className="flex h-9 items-center justify-center rounded-xl border border-red-200 bg-red-50 px-2.5 text-red-600 hover:bg-red-100 active:scale-95 transition-all shrink-0"
+                  title="장애물 신고"
+                >
+                  <ShieldAlert size={13} className="text-red-600" />
+                </button>
               </div>
             </div>
           )}
@@ -1525,12 +1468,9 @@ export default function App() {
                           <ChevronDown size={12} /> 패널 접기
                         </span>
                       </div>
-                      <IdleSheet
+                      <HomeSummarySheet
                         origin={origin}
-                        destination={destination}
-                        onSelectCourse={handleFilterSelect}
-                        onStartRideDirect={handleStartRiding}
-                        onOpenAllCourses={() => setIsAllCoursesOpen(true)}
+                        weather={weather}
                         onOpenOfficialGuide={() => setIsOfficialGuideOpen(true)}
                       />
                     </>
@@ -1662,15 +1602,6 @@ export default function App() {
             </div>
           </div>
         )}
-
-        <SearchModal
-          isOpen={isSearchOpen}
-          onClose={() => setIsSearchOpen(false)}
-          initialRouteType={routeType}
-          origin={origin}
-          destination={destination}
-          onFindOptimalRoute={handleFindOptimalRoute}
-        />
 
         <DepartureTimeModal
           isOpen={isDepartureModalOpen}

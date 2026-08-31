@@ -4,6 +4,12 @@ import {
   Trophy,
   Navigation,
   Trash2,
+  ShieldCheck,
+  BellRing,
+  Phone,
+  AlertTriangle,
+  CheckCircle2,
+  Bike,
 } from 'lucide-react';
 
 interface RecordTabProps {
@@ -104,7 +110,7 @@ export default function RecordTab({
       </div>
 
       {/* History List */}
-      <div className="px-6 pt-5">
+      <div className="px-6 pt-5 pb-8">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-xs font-bold text-slate-600">최근 주행 기록</h2>
           {records.length > 0 && (
@@ -175,6 +181,86 @@ export default function RecordTab({
             ))}
           </div>
         )}
+
+        <div className="mt-6 space-y-4">
+          <div className="rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-4 shadow-sm">
+            <div className="mb-2 flex items-center gap-2">
+              <BellRing size={16} className="text-amber-600" />
+              <h3 className="text-sm font-black text-slate-900">오늘의 체크리스트 / 정비 알림</h3>
+            </div>
+            <div className="rounded-2xl border border-amber-200 bg-white/80 p-3">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                  <CheckCircle2 size={16} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-600">D-3 유지보수</p>
+                  <p className="mt-1 text-base font-black text-slate-900">체인 오일링 D-3</p>
+                  <p className="mt-1 text-[11px] text-slate-600">라이딩 전 필수 점검: 체인 상태, 타이어 압력, 브레이크 마찰, 안장 고정 여부를 확인해 주세요.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-sky-200 bg-gradient-to-br from-sky-50 to-blue-50 p-4 shadow-sm">
+            <div className="mb-3 flex items-center gap-2">
+              <ShieldCheck size={16} className="text-sky-600" />
+              <h3 className="text-sm font-black text-slate-900">자전거 안전 수칙</h3>
+            </div>
+
+            <div className="space-y-2.5">
+              {[
+                '자전거에서는 반드시 헬멧 착용 및 안전모를 우선 확인하세요.',
+                '횡단보도에서는 자전거에서 내려 보행자로 건너세요.',
+                '야간에는 라이트와 반사판을 점검하고, 보행자 우선 구역을 지켜주세요.',
+                '고속 주행 시 앞차 간격을 충분히 유지하고, 급정거는 피해주세요.',
+              ].map((rule, index) => (
+                <div key={rule} className="flex gap-2 rounded-2xl border border-sky-100 bg-white/80 p-2.5">
+                  <div className="mt-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-[10px] font-black text-sky-700">
+                    {index + 1}
+                  </div>
+                  <p className="text-[12px] leading-5 text-slate-700">{rule}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 rounded-2xl border border-sky-200 bg-white/80 p-3">
+              <div className="mb-2 flex items-center gap-2">
+                <Bike size={15} className="text-sky-700" />
+                <span className="text-[11px] font-black text-slate-800">수신호 사진 설명</span>
+              </div>
+              <div className="flex items-center gap-3 rounded-xl bg-sky-50 p-2.5">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-2xl shadow-sm">🚦</div>
+                <p className="text-[11px] leading-5 text-slate-700">
+                  좌측 수신호는 자전거 통행 시 반드시 지켜야 하는 신호 지시를 의미합니다. 신호를 확인하고 정차·출발을 안전하게 진행하세요.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-red-200 bg-gradient-to-br from-red-50 to-rose-50 p-4 shadow-sm">
+            <div className="mb-2 flex items-center gap-2">
+              <Phone size={16} className="text-red-600" />
+              <h3 className="text-sm font-black text-slate-900">위급시 전화번호</h3>
+            </div>
+
+            <div className="space-y-2">
+              {[
+                ['응급상황', '119'],
+                ['안양시 자전거 안전 상담', '031-8045-XXXX'],
+                ['지역 경찰청/교통상황', '112'],
+              ].map(([label, number]) => (
+                <div key={label} className="flex items-center justify-between rounded-2xl border border-red-100 bg-white/80 px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={15} className="text-red-600" />
+                    <span className="text-[12px] font-bold text-slate-800">{label}</span>
+                  </div>
+                  <span className="text-sm font-black text-red-700">{number}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

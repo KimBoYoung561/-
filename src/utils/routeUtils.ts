@@ -106,7 +106,7 @@ export async function fetchCustomOptimalRouteAsync(
   avoidSide: 1 | -1 = 1
 ): Promise<Course> {
   const isRoundTrip = routeType === 'roundtrip';
-  const result = await calculateRealBikeRoute(originCoords, destCoords, originName, destName, avoidPoint, avoidSide);
+  const result = await calculateRealBikeRoute(originCoords, destCoords, originName, destName, avoidPoint, avoidSide, preferredFilter);
 
   let finalPath = [...result.path];
   let finalNavSteps = [...result.navSteps];
@@ -180,7 +180,7 @@ export function createCustomOptimalRoute(
 ): Course {
   const isRoundTrip = routeType === 'roundtrip';
   
-  const denseResult = calculateAnyangDenseRoadRoute(originCoords, destCoords, originName, destName);
+  const denseResult = calculateAnyangDenseRoadRoute(originCoords, destCoords, originName, destName, preferredFilter);
   const finalPath = isRoundTrip ? [...denseResult.path, ...[...denseResult.path].reverse().slice(1)] : denseResult.path;
   const distanceKm = isRoundTrip ? Math.round(denseResult.distanceKm * 2 * 10) / 10 : denseResult.distanceKm;
   const timeMinutes = isRoundTrip ? denseResult.timeMinutes * 2 : denseResult.timeMinutes;

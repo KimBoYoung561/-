@@ -67,27 +67,27 @@ export function calculateRoadTypeBreakdown(coords: [number, number][]): {
     };
   }
 
-  let riverCount = 0;
-  let segregatedCount = 0;
-  let unsegregatedCount = 0;
+  let riverDistance = 0;
+  let segregatedDistance = 0;
+  let unsegregatedDistance = 0;
 
-  for (const [lat, lng] of coords) {
-    // 1. Check proximity to official river paths (< 120m)
+  for (let index = 0; index < coords.length - 1; index += 1) {
+    const [startLat, startLng] = coords[index];
+    const [endLat, endLng] = coords[index + 1];
+    const midpoint = { lat: (startLat + endLat) / 2, lng: (startLng + endLng) / 2 };
+    const segmentDistance = getDistanceKm(startLat, startLng, endLat, endLng);
+
+    // Classify each segment by its midpoint, then weight the result by distance.
     let isRiver = false;
     for (const stream of OFFICIAL_STREAM_LINES) {
       if (stream.type === '하천전용로') {
-        for (const p of stream.path) {
-          if (getDistanceKm(lat, lng, p[0], p[1]) < 0.12) {
-            isRiver = true;
-            break;
-          }
-        }
+        if (getPointToPathDistanceMeters(midpoint, stream.path) < 120) isRiver = true;
       }
       if (isRiver) break;
     }
 
     if (isRiver) {
-      riverCount++;
+      riverDistance += segmentDistance;
       continue;
     }
 
@@ -95,52 +95,24 @@ export function calculateRoadTypeBreakdown(coords: [number, number][]): {
     let isSegregated = false;
     for (const key of ['simin-daero', 'pyeongchon-daero', 'gwanak-daero']) {
       const vec = ROAD_VECTORS[key];
-      if (vec) {
-        for (const p of vec) {
-          if (getDistanceKm(lat, lng, p[0], p[1]) < 0.10) {
-            isSegregated = true;
-            break;
-          }
-        }
-      }
+      if (vec && getPointToPathDistanceMeters(midpoint, vec) < 100) isSegregated = true;
       if (isSegregated) break;
     }
 
     if (isSegregated) {
-      segregatedCount++;
+      segregatedDistance += segmentDistance;
     } else {
-      unsegregatedCount++;
+      unsegregatedDistance += segmentDistance;
     }
   }
 
-  const total = coords.length;
-  let riverPct = Math.round((riverCount / total) * 100);
-  let segPct = Math.round((segregatedCount / total) * 100);
-  
-  if (riverCount > 0 && riverPct < 8) riverPct = 10;
-  if (segregatedCount > 0 && segPct < 8) segPct = 10;
-
-  let unsegPct = 100 - riverPct - segPct;
-  if (unsegPct < 2) {
-    unsegPct = 3;
-    if (riverPct >= segPct && riverPct > 5) riverPct -= 3;
-    else if (segPct > 5) segPct -= 3;
-  } else if (unsegPct > 35) {
-    const diff = unsegPct - 20;
-    unsegPct = 20;
-    if (riverPct >= segPct) riverPct += diff;
-    else segPct += diff;
-  }
-
-  // Ensure exact 100% sum
-  const sum = riverPct + segPct + unsegPct;
-  if (sum !== 100) {
-    unsegPct += (100 - sum);
-  }
-
-  const dedicatedBikeRatio = Math.min(98, riverPct + Math.round(segPct * 0.8));
-  const sharedBikeRatio = Math.max(2, 100 - dedicatedBikeRatio - Math.round(unsegPct * 0.4));
-  const sidewalkRatio = Math.max(1, 100 - dedicatedBikeRatio - sharedBikeRatio);
+  const totalDistance = riverDistance + segregatedDistance + unsegregatedDistance;
+  const riverPct = totalDistance > 0 ? Math.round((riverDistance / totalDistance) * 100) : 0;
+  const segPct = totalDistance > 0 ? Math.round((segregatedDistance / totalDistance) * 100) : 0;
+  const unsegPct = Math.max(0, 100 - riverPct - segPct);
+  const dedicatedBikeRatio = riverPct + segPct;
+  const sharedBikeRatio = unsegPct;
+  const sidewalkRatio = 0;
 
   return {
     riverPathRatio: Math.max(0, riverPct),
@@ -368,7 +340,8 @@ export async function calculateRealBikeRoute(
   originName: string,
   destName: string,
   avoidPoint?: LatLng,
-  avoidSide: 1 | -1 = 1
+  avoidSide: 1 | -1 = 1,
+  preferredFilter?: string,
 ): Promise<RouteResult> {
   const startLat = originCoords.lat;
   const startLng = originCoords.lng;
@@ -390,14 +363,22 @@ export async function calculateRealBikeRoute(
       const bypassLng = avoidPoint.lng + (directionLat / length) * detourOffset * avoidSide;
       routePoints = `${startLng},${startLat};${bypassLng},${bypassLat};${destLng},${destLat}`;
     }
-    const url = `https://router.project-osrm.org/route/v1/bicycle/${routePoints}?overview=full&geometries=geojson&steps=true`;
+    const url = `https://router.project-osrm.org/route/v1/bicycle/${routePoints}?overview=full&geometries=geojson&steps=true&alternatives=true`;
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timeoutId);
 
     if (res.ok) {
       const data = await res.json();
       if (data && data.code === 'Ok' && data.routes && data.routes.length > 0) {
-        const osrmRoute = data.routes[0];
+        const routes = data.routes as any[];
+        const wantsRiverRoute = preferredFilter === '경치 좋은' || /하천|천변|수변/.test(destName);
+        const osrmRoute = wantsRiverRoute
+          ? [...routes].sort((first, second) => {
+              const firstPath = first.geometry.coordinates.map(([lng, lat]: [number, number]) => [lat, lng] as [number, number]);
+              const secondPath = second.geometry.coordinates.map(([lng, lat]: [number, number]) => [lat, lng] as [number, number]);
+              return calculateRoadTypeBreakdown(secondPath).riverPathRatio - calculateRoadTypeBreakdown(firstPath).riverPathRatio;
+            })[0]
+          : routes[0];
         const rawCoords: [number, number][] = osrmRoute.geometry.coordinates.map(
           ([lng, lat]: [number, number]) => [lat, lng]
         );
@@ -629,7 +610,8 @@ export function calculateAnyangDenseRoadRoute(
   originCoords: LatLng,
   destCoords: LatLng,
   originName: string,
-  destName: string
+  destName: string,
+  preferredFilter?: string,
 ): RouteResult {
   const startLat = originCoords.lat;
   const startLng = originCoords.lng;
@@ -661,12 +643,27 @@ export function calculateAnyangDenseRoadRoute(
   ) {
     matchedCorridor = ROAD_VECTORS['haguicheon-main'];
   } else {
-    // Default spine along Anyangcheon & Simin-daero connectors
-    matchedCorridor = [
-      ...ROAD_VECTORS['simin-daero'].slice(0, 5),
-      ...ROAD_VECTORS['haguicheon-main'].slice(0, 6),
-      ...ROAD_VECTORS['anyangcheon-main'].slice(10, 16),
+    // Keep the fallback on one continuous corridor. Concatenating unrelated
+    // vectors creates large jumps that the curve interpolation exaggerates.
+    const corridorCandidates = [
+      ROAD_VECTORS['simin-daero'],
+      ROAD_VECTORS['pyeongchon-daero'],
+      ROAD_VECTORS['gwanak-daero'],
+      ROAD_VECTORS['anyang-manan-ro'],
+      ROAD_VECTORS['anyangcheon-main'],
+      ROAD_VECTORS['haguicheon-main'],
     ];
+    matchedCorridor = corridorCandidates.reduce((best, corridor) => {
+      const startDistance = Math.min(...corridor.map((point) => getDistanceKm(startLat, startLng, point[0], point[1])));
+      const endDistance = Math.min(...corridor.map((point) => getDistanceKm(destLat, destLng, point[0], point[1])));
+      const bestStartDistance = Math.min(...best.map((point) => getDistanceKm(startLat, startLng, point[0], point[1])));
+      const bestEndDistance = Math.min(...best.map((point) => getDistanceKm(destLat, destLng, point[0], point[1])));
+      const riverBonus = preferredFilter === '경치 좋은' ? calculateRoadTypeBreakdown(corridor).riverPathRatio / 100 : 0;
+      const bestRiverBonus = preferredFilter === '경치 좋은' ? calculateRoadTypeBreakdown(best).riverPathRatio / 100 : 0;
+      return startDistance + endDistance - riverBonus * 0.5 < bestStartDistance + bestEndDistance - bestRiverBonus * 0.5
+        ? corridor
+        : best;
+    });
   }
 
   // Slice corridor closest to origin and destination

@@ -1,5 +1,6 @@
 import { Facility } from '../types';
 import { IMPORTED_FACILITIES } from './importedFacilities';
+import { ANYANG_AIR_PUMPS } from './airPumps';
 
 const CURATED_FACILITIES: Facility[] = [
   // 🚻 ─── 안양시 공중화장실 & 개방화장실 (Anyang Restroom Dataset) ───
@@ -1154,6 +1155,9 @@ const VERIFIED_PUBLIC_RESTROOMS = IMPORTED_FACILITIES.filter((facility) =>
 
 // CSV records are authoritative for these categories; show only 251 verified public restrooms.
 export const ANYANG_FACILITIES: Facility[] = [
-  ...CURATED_FACILITIES.filter((facility) => facility.category !== 'restroom' && facility.category !== 'parking'),
-  ...VERIFIED_PUBLIC_RESTROOMS,
+  ...CURATED_FACILITIES.filter((facility) =>
+    facility.category !== 'restroom' && facility.category !== 'parking' && facility.category !== 'repair'
+  ),
+  ...ANYANG_AIR_PUMPS,
+  ...VERIFIED_PUBLIC_RESTROOMS.filter((facility) => facility.category !== 'repair'),
 ];

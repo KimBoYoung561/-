@@ -92,6 +92,12 @@ export default function FacilityDetailModal({
         <p className="mt-4 text-xs text-slate-700 leading-relaxed bg-slate-50 border border-slate-200 p-3.5 rounded-2xl">
           {facility.description}
         </p>
+        {facility.original && (
+          <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
+            <p className="font-bold">원문 위치: {facility.original}</p>
+            {facility.detail && <p className="mt-1">상세 안내: {facility.detail}</p>}
+          </div>
+        )}
 
         {/* Items available list */}
         {facility.availableItems && facility.availableItems.length > 0 && (

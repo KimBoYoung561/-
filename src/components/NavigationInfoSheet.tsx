@@ -10,8 +10,6 @@ import {
   Volume2,
   VolumeX,
   Flag,
-  Flame,
-  Gauge,
   Clock,
   Navigation,
   Footprints,
@@ -449,17 +447,7 @@ export default function NavigationInfoSheet({
 
       {/* ── 2. Always Visible: Slim Riding Metrics Bar ── */}
       <div className="px-3 pb-2 pt-0.5">
-        <div className="grid grid-cols-4 gap-1 rounded-2xl bg-slate-50 p-2 border border-slate-200 text-center shadow-xs">
-          {/* 현재 속도 */}
-          <div className="flex flex-col items-center">
-            <span className="flex items-center gap-0.5 text-[9px] font-bold text-slate-500">
-              <Gauge size={10} className="text-[#0055FF]" />
-              현재속도
-            </span>
-            <span className="text-xl font-black text-[#0055FF] leading-none my-0.5">{currentSpeed}</span>
-            <span className="text-[9px] font-bold text-slate-500">km/h</span>
-          </div>
-
+        <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-50 p-2 border border-slate-200 text-center shadow-xs">
           {/* 남은 거리 */}
           <div className="flex flex-col items-center border-l border-slate-200">
             <span className="flex items-center gap-0.5 text-[9px] font-bold text-slate-500">
@@ -478,16 +466,6 @@ export default function NavigationInfoSheet({
             </span>
             <span className="text-lg font-black text-slate-900 leading-none my-0.5">{formatTime(elapsedSeconds)}</span>
             <span className="text-[9px] font-bold text-slate-500">경과</span>
-          </div>
-
-          {/* 소모 열량 */}
-          <div className="flex flex-col items-center border-l border-slate-200">
-            <span className="flex items-center gap-0.5 text-[9px] font-bold text-slate-500">
-              <Flame size={10} className="text-amber-500" />
-              소모열량
-            </span>
-            <span className="text-lg font-black text-slate-900 leading-none my-0.5">{burnedCalories}</span>
-            <span className="text-[9px] font-bold text-slate-500">kcal</span>
           </div>
         </div>
       </div>
@@ -658,10 +636,6 @@ export default function NavigationInfoSheet({
                 <span className="font-bold text-[#0055FF]">
                   {actualDistanceKm} km <span className="text-[10px] text-slate-400 font-normal">({Math.round(progressPercent)}% 진행)</span>
                 </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500 font-bold">실제 소모 열량</span>
-                <span className="font-bold text-amber-600">{burnedCalories} kcal</span>
               </div>
             </div>
 
