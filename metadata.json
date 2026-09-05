@@ -1,6 +1,6 @@
 {
-  "name": "안양 자전거 지도",
-  "description": "안양시 자전거 전용 도로 및 내비게이션, 맞춤형 라이딩 경로와 실시간 안내 앱",
+  "name": "안양시 자전거 내비게이션",
+  "description": "GPS 기반 안양 8경 및 자전거 나들이 명소 추천, AI 날씨 요약, 편의시설 안내 및 외부 길안내 연동 스마트 라이딩 가이드",
   "requestFramePermissions": ["geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
